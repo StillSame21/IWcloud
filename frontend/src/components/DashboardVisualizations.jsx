@@ -1,0 +1,569 @@
+import { useMemo } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { useAppState } from '../context/useAppState'
+
+const cardClass = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
+const chartCardClass = `${cardClass} min-h-[420px]`
+const chartShellClass = 'mt-4 h-80'
+const chartGridStroke = '#e2e8f0'
+const axisStroke = '#94a3b8'
+const tooltipStyle = {
+  borderColor: '#334155',
+  borderRadius: '12px',
+  background: '#0f172a',
+  color: '#ffffff',
+}
+const axisTick = { fill: '#64748b', fontSize: 12 }
+
+const kpiToneClasses = {
+  sky: 'border-l-sky-500',
+  emerald: 'border-l-emerald-500',
+  amber: 'border-l-amber-400',
+}
+
+const phaseToneClasses = {
+  neutral: 'bg-slate-100 text-slate-700',
+  warning: 'bg-amber-200 text-amber-900',
+  success: 'bg-emerald-300 text-emerald-950',
+  info: 'bg-slate-300 text-slate-700',
+}
+
+const diagnosticToneClasses = {
+  warning: 'border-l-amber-400 bg-amber-50 text-amber-900',
+  success: 'border-l-emerald-500 bg-emerald-50 text-emerald-800',
+}
+
+const outcomeColors = {
+  accepted: '#10b981',
+  rejected: '#ef4444',
+}
+
+function formatNumber(value, maximumFractionDigits = 1) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits,
+  }).format(value)
+}
+
+function buildKpiCards(kpis) {
+  return [
+    {
+      id: 'episode',
+      label: 'Episode',
+      value: `${kpis.episode.current}/${kpis.episode.total}`,
+      helper: kpis.episode.helper,
+      tone: 'sky',
+    },
+    {
+      id: 'training-phase',
+      label: 'Training Phase',
+      value: kpis.trainingPhase.value,
+      helper: kpis.trainingPhase.helper,
+      tone: 'emerald',
+    },
+    {
+      id: 'task-acceptance',
+      label: 'Task Acceptance',
+      value: `${kpis.taskAcceptance.value}%`,
+      helper: kpis.taskAcceptance.helper,
+      tone: 'emerald',
+    },
+    {
+      id: 'average-energy-usage',
+      label: 'Average Energy Usage',
+      value: `${formatNumber(kpis.averageEnergyUsage.value)} ${
+        kpis.averageEnergyUsage.unit
+      }`,
+      helper: kpis.averageEnergyUsage.helper,
+      tone: 'amber',
+    },
+  ]
+}
+
+function buildOutcomeData(taskOutcome) {
+  return [
+    {
+      name: 'Accepted',
+      value: taskOutcome.acceptedPercent,
+      fill: outcomeColors.accepted,
+    },
+    {
+      name: 'Rejected',
+      value: taskOutcome.rejectedPercent,
+      fill: outcomeColors.rejected,
+    },
+  ]
+}
+
+function getActivePhase(timeline) {
+  return timeline.phases.find(
+    (phase) =>
+      timeline.currentEpisode >= phase.start &&
+      timeline.currentEpisode < phase.end,
+  )
+}
+
+function getTimelineMarkers(timeline) {
+  const markers = timeline.phases.map((phase) => phase.start)
+  return [...new Set([...markers, timeline.totalEpisodes])]
+}
+
+function getUtilizationClass(value) {
+  if (value < 45) {
+    return 'bg-emerald-100 text-emerald-800'
+  }
+
+  if (value < 65) {
+    return 'bg-teal-500 text-white'
+  }
+
+  if (value < 75) {
+    return 'bg-amber-300 text-slate-950'
+  }
+
+  if (value < 85) {
+    return 'bg-orange-400 text-white'
+  }
+
+  return 'bg-rose-500 text-white'
+}
+
+function SectionTitle({ title }) {
+  return (
+    <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-950">
+      {title}
+    </h2>
+  )
+}
+
+function ChartCard({ children, title }) {
+  return (
+    <section className={chartCardClass}>
+      <SectionTitle title={title} />
+      <div className={chartShellClass}>{children}</div>
+    </section>
+  )
+}
+
+function KpiGrid({ cards }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => (
+        <section
+          key={card.id}
+          className={`${cardClass} border-l-4 ${kpiToneClasses[card.tone]}`}
+        >
+          <p className="text-sm font-medium text-slate-500">{card.label}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-950">
+            {card.value}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">{card.helper}</p>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function TrainingPhaseTimeline({ timeline }) {
+  const activePhase = getActivePhase(timeline)
+  const markers = getTimelineMarkers(timeline)
+
+  return (
+    <section className={cardClass}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <SectionTitle title="Training Phase Timeline" />
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          {activePhase?.label ?? 'Waiting'}
+        </span>
+      </div>
+
+      <div className="flex overflow-hidden rounded-lg border border-slate-200">
+        {timeline.phases.map((phase) => {
+          const width =
+            ((phase.end - phase.start) / timeline.totalEpisodes) * 100
+          const isActive = activePhase?.id === phase.id
+
+          return (
+            <div
+              key={phase.id}
+              className={`flex min-h-10 items-center justify-center px-3 text-xs font-semibold ${
+                phaseToneClasses[phase.tone]
+              } ${isActive ? 'ring-2 ring-inset ring-slate-900/20' : ''}`}
+              style={{ width: `${width}%` }}
+            >
+              {isActive ? `${phase.label} now` : phase.label}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-2 flex justify-between text-xs text-slate-500">
+        {markers.map((episode) => (
+          <span key={episode}>Ep {episode}</span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AgentRewardChart({ data }) {
+  return (
+    <ChartCard title="Agent Reward Per Episode">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 12, right: 24, left: 10 }}>
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
+          <YAxis stroke={axisStroke} tick={axisTick} width={62} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <ReferenceArea
+            x1={60}
+            x2={90}
+            y1={-600}
+            y2={-180}
+            fill="#ef4444"
+            fillOpacity={0.08}
+          />
+          <Line
+            type="monotone"
+            dataKey="farmReward"
+            name="Server farm agent"
+            stroke="#10b981"
+            strokeWidth={2.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="serverReward"
+            name="Server agent"
+            stroke="#0ea5e9"
+            strokeWidth={2.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="smoothedFarmReward"
+            name="Smoothed farm"
+            stroke="#f59e0b"
+            strokeWidth={2}
+            strokeDasharray="6 5"
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function ActorCriticLossChart({ data }) {
+  return (
+    <ChartCard title="Actor and Critic Loss">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
+          <YAxis stroke={axisStroke} tick={axisTick} width={42} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="farmActor"
+            name="Farm actor"
+            stroke="#10b981"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="farmCritic"
+            name="Farm critic"
+            stroke="#059669"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="serverActor"
+            name="Server actor"
+            stroke="#0ea5e9"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="serverCritic"
+            name="Server critic"
+            stroke="#2563eb"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function ReplayBufferChart({ data }) {
+  return (
+    <ChartCard title="Q-Value and Replay Buffer">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
+          <YAxis
+            yAxisId="qValue"
+            stroke="#f97316"
+            tick={axisTick}
+            width={42}
+          />
+          <YAxis
+            yAxisId="buffer"
+            orientation="right"
+            domain={[0, 100]}
+            stroke="#0ea5e9"
+            tick={axisTick}
+            width={42}
+          />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Line
+            yAxisId="qValue"
+            type="monotone"
+            dataKey="qValue"
+            name="Q-value mean"
+            stroke="#f97316"
+            strokeWidth={2.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            yAxisId="buffer"
+            type="monotone"
+            dataKey="bufferFill"
+            name="Buffer fill %"
+            stroke="#0ea5e9"
+            strokeDasharray="6 4"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function AverageEnergyUsageChart({ data }) {
+  return (
+    <ChartCard title="Average Energy Usage">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis dataKey="workload" stroke={axisStroke} tick={axisTick} />
+          <YAxis stroke={axisStroke} tick={axisTick} width={52} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Bar
+            dataKey="averageEnergy"
+            name="Average Energy"
+            fill="#10b981"
+            radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function TaskOutcomePanel({ outcome, pieData }) {
+  return (
+    <section className={chartCardClass}>
+      <SectionTitle title="Task Outcome and Timing" />
+      <div className="mt-4 grid min-h-80 grid-cols-1 items-center gap-6 md:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                innerRadius={64}
+                outerRadius={92}
+                paddingAngle={2}
+                stroke="none"
+                isAnimationActive={false}
+              >
+                {pieData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="space-y-5">
+          <TaskOutcomeStat
+            label="Accepted"
+            value={`${outcome.acceptedPercent}%`}
+            className="text-emerald-600"
+          />
+          <TaskOutcomeStat
+            label="Rejected"
+            value={`${outcome.rejectedPercent}%`}
+            className="text-rose-500"
+          />
+          <TaskOutcomeStat
+            label="Wall Time Ratio"
+            value={`${outcome.wallTimeRatio}x`}
+            helper="vs baseline"
+            className="text-slate-950"
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TaskOutcomeStat({ className, helper, label, value }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className={`text-2xl font-semibold ${className}`}>{value}</p>
+      {helper ? <p className="text-sm text-slate-500">{helper}</p> : null}
+    </div>
+  )
+}
+
+function ServerFarmHeatmap({ data }) {
+  return (
+    <section className={cardClass}>
+      <SectionTitle title="Server Farm CPU Utilisation Snapshot - 10 Farms x 10 Servers" />
+      <div className="mt-4 overflow-x-auto">
+        <div className="min-w-[680px] space-y-2">
+          {data.farms.map((servers, farmIndex) => (
+            <div
+              key={`farm-${farmIndex + 1}`}
+              className="grid items-center gap-1"
+              style={{
+                gridTemplateColumns: '2.75rem repeat(10, minmax(2.25rem, 1fr))',
+              }}
+            >
+              <span className="text-xs font-medium text-slate-500">
+                F{farmIndex + 1}
+              </span>
+              {servers.map((value, serverIndex) => (
+                <span
+                  key={`${farmIndex}-${serverIndex}`}
+                  className={`rounded-md px-2 py-1.5 text-center text-xs font-semibold ${getUtilizationClass(
+                    value,
+                  )}`}
+                  title={`Farm ${farmIndex + 1}, server ${
+                    serverIndex + 1
+                  }: ${value}% CPU util`}
+                >
+                  {value}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span>Low</span>
+        {[28, 56, 70, 80, 90].map((value) => (
+          <span
+            key={value}
+            className={`h-3 w-6 rounded-full ${getUtilizationClass(value)}`}
+          />
+        ))}
+        <span>High - above optimal {data.optimalRate}%</span>
+      </div>
+    </section>
+  )
+}
+
+function DiagnosticsPanel({ diagnostics }) {
+  return (
+    <section className="space-y-3">
+      <SectionTitle title="Signals and Diagnostics" />
+      {diagnostics.map((item) => (
+        <article
+          key={item.id}
+          className={`rounded-lg border border-slate-200 border-l-4 p-4 ${
+            diagnosticToneClasses[item.tone]
+          }`}
+        >
+          <h3 className="text-sm font-semibold">{item.title}</h3>
+          <p className="mt-1 text-sm leading-6">{item.message}</p>
+        </article>
+      ))}
+    </section>
+  )
+}
+
+export function DashboardOverview() {
+  const { dashboardTelemetry } = useAppState()
+  const kpiCards = useMemo(
+    () => buildKpiCards(dashboardTelemetry.kpis),
+    [dashboardTelemetry.kpis],
+  )
+
+  return (
+    <section className="space-y-6">
+      <KpiGrid cards={kpiCards} />
+      <TrainingPhaseTimeline timeline={dashboardTelemetry.phaseTimeline} />
+    </section>
+  )
+}
+
+export default function DashboardVisualizations() {
+  const { dashboardTelemetry } = useAppState()
+  const pieData = useMemo(
+    () => buildOutcomeData(dashboardTelemetry.taskOutcome),
+    [dashboardTelemetry.taskOutcome],
+  )
+
+  return (
+    <section className="space-y-6">
+      <AgentRewardChart data={dashboardTelemetry.rewardSeries} />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ActorCriticLossChart data={dashboardTelemetry.lossSeries} />
+        <ReplayBufferChart data={dashboardTelemetry.replaySeries} />
+        <AverageEnergyUsageChart data={dashboardTelemetry.averageEnergySeries} />
+        <TaskOutcomePanel
+          outcome={dashboardTelemetry.taskOutcome}
+          pieData={pieData}
+        />
+      </div>
+
+      <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
+      <DiagnosticsPanel diagnostics={dashboardTelemetry.diagnostics} />
+    </section>
+  )
+}

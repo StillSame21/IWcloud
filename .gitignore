@@ -1,3 +1,17 @@
 /venv/
 __pycache__/
 *.pyc
+
+# Frontend dependencies and build output
+/frontend/node_modules/
+/frontend/dist/
+/frontend/dist-ssr/
+
+# Frontend caches, logs, and local env files
+/frontend/.vite/
+/frontend/.eslintcache
+/frontend/coverage/
+/frontend/logs/
+/frontend/*.log
+/frontend/.env.local
+/frontend/.env.*.local
