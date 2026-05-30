@@ -9,10 +9,6 @@ import {
 } from 'recharts'
 import { useAppState } from '../context/useAppState'
 
-function formatStatus(status) {
-  return status.charAt(0).toUpperCase() + status.slice(1)
-}
-
 function getMetricEpisode(point, index) {
   return point?.episode ?? index + 1
 }
@@ -27,17 +23,6 @@ function buildEpisodeEnergyData(metrics) {
     episode: getMetricEpisode(metric, index),
     totalEnergyCost: getMetricTotalEnergyCost(metric),
   }))
-}
-
-function MetricCard({ label, value }) {
-  return (
-    <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </p>
-      <p className="mt-2 text-lg font-semibold text-slate-950">{value}</p>
-    </section>
-  )
 }
 
 function PanelHeader() {
@@ -66,14 +51,18 @@ function LiveMetricsChart({ metrics }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={episodeEnergyData} margin={{ top: 10, right: 20 }}>
+      <LineChart
+        data={episodeEnergyData}
+        margin={{ top: 10, right: 20, bottom: 8 }}
+      >
         <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
         <XAxis
           dataKey="episode"
+          height={48}
           label={{
             value: 'Episode',
             position: 'insideBottom',
-            offset: -4,
+            offset: 2,
             fill: '#64748b',
           }}
           stroke="#94a3b8"
@@ -113,28 +102,8 @@ function LiveMetricsChart({ metrics }) {
   )
 }
 
-function MetricsGrid({ latestMetric, runStatus }) {
-  const latestEpisode = latestMetric?.episode ?? latestMetric?.step ?? 0
-  const latestTotalEnergyCost = getMetricTotalEnergyCost(latestMetric) ?? 0
-  const cards = [
-    ['Status', formatStatus(runStatus)],
-    ['Latest Episode', latestEpisode],
-    ['Total Energy Cost', latestTotalEnergyCost.toFixed(2)],
-    ['Rejected Tasks', latestMetric?.rejectedTasks ?? 0],
-  ]
-
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(([label, value]) => (
-        <MetricCard key={label} label={label} value={value} />
-      ))}
-    </div>
-  )
-}
-
 export default function LiveSimulationPanel() {
-  const { liveMetrics, runStatus } = useAppState()
-  const latestMetric = liveMetrics.at(-1)
+  const { liveMetrics } = useAppState()
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -144,8 +113,6 @@ export default function LiveSimulationPanel() {
         <div className="h-80 rounded-xl border border-slate-200 bg-slate-50 p-5">
           <LiveMetricsChart metrics={liveMetrics} />
         </div>
-
-        <MetricsGrid latestMetric={latestMetric} runStatus={runStatus} />
       </div>
     </section>
   )
