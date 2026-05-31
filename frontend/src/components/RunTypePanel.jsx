@@ -8,8 +8,8 @@ import { useAppState } from '../context/useAppState'
 const runTypes = [
   {
     id: 'random',
-    label: 'Random Simulation',
-    description: 'Run EcoPyCSIM with stochastic scheduling inputs.',
+    label: 'Evaluation Random Algorithm',
+    description: 'Evaluate EcoPyCSIM with stochastic scheduling inputs.',
   },
   {
     id: 'training',
@@ -18,8 +18,8 @@ const runTypes = [
   },
   {
     id: 'inference',
-    label: 'Run Trained Model',
-    description: 'Use a saved policy model for scheduling inference.',
+    label: 'Evaluated Trained Model',
+    description: 'Evaluate a saved policy model for scheduling decisions.',
   },
 ]
 

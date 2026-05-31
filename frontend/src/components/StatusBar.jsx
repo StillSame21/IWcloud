@@ -1,7 +1,7 @@
 import StatusBadge from './StatusBadge'
 import { useAppState } from '../context/useAppState'
 
-function getTrainingStatusCopy(runStatus) {
+function getRunStatusCopy(runStatus) {
   if (runStatus === 'running') {
     return {
       badge: 'Running',
@@ -21,7 +21,7 @@ function getTrainingStatusCopy(runStatus) {
   return {
     badge: 'Ready',
     heading: 'Idle',
-    text: 'Training is waiting for a run.',
+    text: 'Waiting for a run.',
   }
 }
 
@@ -54,7 +54,7 @@ export default function StatusBar() {
   } = useAppState()
 
   const backendLabel = backendInfo.connected ? 'Connected' : 'Disconnected'
-  const trainingStatus = getTrainingStatusCopy(runStatus)
+  const runStatusCopy = getRunStatusCopy(runStatus)
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -74,11 +74,11 @@ export default function StatusBar() {
           </p>
         </StatusCard>
 
-        <StatusCard label="Training Status">
-          <StatusHeading badgeLabel={trainingStatus.badge}>
-            {trainingStatus.heading}
+        <StatusCard label="Run Status">
+          <StatusHeading badgeLabel={runStatusCopy.badge}>
+            {runStatusCopy.heading}
           </StatusHeading>
-          <p className="text-sm text-slate-500">{trainingStatus.text}</p>
+          <p className="text-sm text-slate-500">{runStatusCopy.text}</p>
         </StatusCard>
 
         <StatusCard label="Active Preset">

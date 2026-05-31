@@ -369,7 +369,7 @@ const buildRun = ({ id, type, dateTime, parameters, metrics }) => ({
 export const runHistory = [
   buildRun({
     id: 'RUN-2401',
-    type: 'Random',
+    type: 'Evaluation Random Algorithm',
     dateTime: '2026-05-25 09:30',
     parameters: {
       ...defaultSimulationParams,
@@ -404,7 +404,7 @@ export const runHistory = [
   }),
   buildRun({
     id: 'RUN-2403',
-    type: 'Inference',
+    type: 'Evaluated Trained Model',
     dateTime: '2026-05-27 11:45',
     parameters: {
       ...defaultSimulationParams,

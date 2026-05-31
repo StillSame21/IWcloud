@@ -5,6 +5,8 @@ const badgeStyles = {
   Idle: 'border-slate-200 bg-slate-100 text-slate-600',
   Stopped: 'border-slate-200 bg-slate-100 text-slate-600',
   Disconnected: 'border-rose-200 bg-rose-100 text-rose-700',
+  'Evaluation Random Algorithm': 'border-cyan-200 bg-cyan-100 text-cyan-700',
+  'Evaluated Trained Model': 'border-violet-200 bg-violet-100 text-violet-700',
   Random: 'border-cyan-200 bg-cyan-100 text-cyan-700',
   Training: 'border-indigo-200 bg-indigo-100 text-indigo-700',
   Inference: 'border-violet-200 bg-violet-100 text-violet-700',

@@ -26,6 +26,8 @@ const tooltipStyle = {
   color: '#ffffff',
 }
 const axisTick = { fill: '#64748b', fontSize: 12 }
+const trainingRunType = 'training'
+const electricityPricePerKwh = 0.16
 
 const kpiToneClasses = {
   sky: 'border-l-sky-500',
@@ -51,7 +53,59 @@ function formatNumber(value, maximumFractionDigits = 1) {
   }).format(value)
 }
 
-function buildKpiCards(kpis) {
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    style: 'currency',
+  }).format(value)
+}
+
+function getMetricStep(point, index) {
+  return point?.step ?? index + 1
+}
+
+function getMetricEpisode(point, index) {
+  return point?.episode ?? index + 1
+}
+
+function getMetricEnergyUsage(point) {
+  return point?.energyUsage ?? point?.energyCost ?? point?.totalEnergyCost ?? 0
+}
+
+function getMetricWallTime(point) {
+  return point?.wallTime ?? point?.stepTime ?? 0
+}
+
+function getMetricElectricityPrice(point) {
+  return (
+    point?.electricityPrice ??
+    Number((getMetricEnergyUsage(point) * electricityPricePerKwh).toFixed(2))
+  )
+}
+
+function getAverage(values) {
+  const numericValues = values.filter(Number.isFinite)
+
+  if (numericValues.length === 0) {
+    return 0
+  }
+
+  return (
+    numericValues.reduce((total, value) => total + value, 0) /
+    numericValues.length
+  )
+}
+
+function getSelectedModelName(savedModels, selectedModel) {
+  return savedModels.find((model) => model.id === selectedModel)?.name
+}
+
+function isTrainingRun(selectedRunType) {
+  return selectedRunType === trainingRunType
+}
+
+function buildTrainingKpiCards(kpis) {
   return [
     {
       id: 'episode',
@@ -84,6 +138,77 @@ function buildKpiCards(kpis) {
       tone: 'amber',
     },
   ]
+}
+
+function buildEvaluationKpiCards({
+  liveMetrics,
+  savedModels,
+  selectedModel,
+  selectedRunType,
+  simParams,
+}) {
+  const lastMetric = liveMetrics.at(-1)
+  const currentEpisode = liveMetrics.length
+    ? getMetricEpisode(lastMetric, liveMetrics.length - 1)
+    : 0
+  const rejectedTasks = lastMetric?.rejectedTasks ?? 0
+  const totalTasks = simParams.numberOfTasks ?? 0
+  const acceptedTasks = Math.max(totalTasks - rejectedTasks, 0)
+  const acceptanceRate =
+    totalTasks > 0 ? (acceptedTasks / totalTasks) * 100 : 0
+  const averageWallTime = getAverage(liveMetrics.map(getMetricWallTime))
+  const averageEnergyUsage = getAverage(liveMetrics.map(getMetricEnergyUsage))
+  const averageElectricityPrice = getAverage(
+    liveMetrics.map(getMetricElectricityPrice),
+  )
+  const selectedModelName = getSelectedModelName(savedModels, selectedModel)
+  const episodeHelper =
+    selectedRunType === 'inference' && selectedModelName
+      ? selectedModelName
+      : `${formatNumber(simParams.numberOfJobs, 0)} jobs configured`
+
+  return [
+    {
+      id: 'episode',
+      label: 'Episode',
+      value: formatNumber(currentEpisode, 0),
+      helper: episodeHelper,
+      tone: 'sky',
+    },
+    {
+      id: 'task-acceptance-rate',
+      label: 'Task Acceptance Rate',
+      value: `${formatNumber(acceptanceRate, 1)}%`,
+      helper: `${formatNumber(acceptedTasks, 0)}/${formatNumber(
+        totalTasks,
+        0,
+      )} tasks accepted`,
+      tone: 'emerald',
+    },
+    {
+      id: 'average-wall-time',
+      label: 'Average Wall Time',
+      value: `${formatNumber(averageWallTime, 3)}s`,
+      helper: `${formatNumber(liveMetrics.length, 0)} time steps sampled`,
+      tone: 'sky',
+    },
+    {
+      id: 'average-electricity',
+      label: 'Average Electricity Usage and Price',
+      value: `${formatNumber(averageEnergyUsage, 1)} kWh / ${formatCurrency(
+        averageElectricityPrice,
+      )}`,
+      helper: 'Average per time step',
+      tone: 'amber',
+    },
+  ]
+}
+
+function buildEnergyUsageSeries(liveMetrics) {
+  return liveMetrics.map((metric, index) => ({
+    timeStep: getMetricStep(metric, index),
+    energyUsage: getMetricEnergyUsage(metric),
+  }))
 }
 
 function getActivePhase(timeline) {
@@ -133,6 +258,14 @@ function ChartCard({ children, title }) {
       <SectionTitle title={title} />
       <div className={chartShellClass}>{children}</div>
     </section>
+  )
+}
+
+function EmptyChartState({ children }) {
+  return (
+    <div className="flex h-full items-center justify-center text-sm font-medium text-slate-500">
+      {children}
+    </div>
   )
 }
 
@@ -376,10 +509,62 @@ function AverageEnergyUsageChart({ data }) {
   )
 }
 
-function ServerFarmHeatmap({ data }) {
+function EnergyUsagePerTimeStepChart({ data }) {
+  return (
+    <ChartCard title="Energy Usage Per Time Step">
+      {data.length === 0 ? (
+        <EmptyChartState>No energy telemetry yet</EmptyChartState>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+            <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+            <XAxis
+              dataKey="timeStep"
+              label={{
+                value: 'Time Step',
+                position: 'insideBottom',
+                offset: -8,
+                fill: '#64748b',
+              }}
+              stroke={axisStroke}
+              tick={axisTick}
+            />
+            <YAxis
+              label={{
+                value: 'Energy Usage (kWh)',
+                angle: -90,
+                position: 'insideLeft',
+                fill: '#64748b',
+              }}
+              stroke={axisStroke}
+              tick={axisTick}
+              width={72}
+            />
+            <Tooltip contentStyle={tooltipStyle} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="energyUsage"
+              name="Energy usage"
+              stroke="#0ea5e9"
+              strokeWidth={3}
+              dot={false}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  )
+}
+
+function ServerFarmHeatmap({
+  data,
+  title = 'Server Farm CPU Utilisation Snapshot - 10 Farms x 10 Servers',
+}) {
   return (
     <section className={cardClass}>
-      <SectionTitle title="Server Farm CPU Utilisation Snapshot - 10 Farms x 10 Servers" />
+      <SectionTitle title={title} />
       <div className="mt-4 overflow-x-auto">
         <div className="min-w-[680px] space-y-2">
           {data.farms.map((servers, farmIndex) => (
@@ -444,10 +629,9 @@ function DiagnosticsPanel({ diagnostics }) {
   )
 }
 
-export function DashboardOverview() {
-  const { dashboardTelemetry } = useAppState()
+function TrainingDashboardOverview({ dashboardTelemetry }) {
   const kpiCards = useMemo(
-    () => buildKpiCards(dashboardTelemetry.kpis),
+    () => buildTrainingKpiCards(dashboardTelemetry.kpis),
     [dashboardTelemetry.kpis],
   )
 
@@ -459,9 +643,33 @@ export function DashboardOverview() {
   )
 }
 
-export default function DashboardVisualizations() {
-  const { dashboardTelemetry } = useAppState()
+function EvaluationDashboardOverview({
+  liveMetrics,
+  savedModels,
+  selectedModel,
+  selectedRunType,
+  simParams,
+}) {
+  const kpiCards = useMemo(
+    () =>
+      buildEvaluationKpiCards({
+        liveMetrics,
+        savedModels,
+        selectedModel,
+        selectedRunType,
+        simParams,
+      }),
+    [liveMetrics, savedModels, selectedModel, selectedRunType, simParams],
+  )
 
+  return (
+    <section className="space-y-6">
+      <KpiGrid cards={kpiCards} />
+    </section>
+  )
+}
+
+function TrainingVisualizations({ dashboardTelemetry }) {
   return (
     <section className="space-y-6">
       <AgentRewardChart data={dashboardTelemetry.rewardSeries} />
@@ -475,5 +683,62 @@ export default function DashboardVisualizations() {
       <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
       <DiagnosticsPanel diagnostics={dashboardTelemetry.diagnostics} />
     </section>
+  )
+}
+
+function EvaluationVisualizations({ dashboardTelemetry, liveMetrics }) {
+  const energyUsageSeries = useMemo(
+    () => buildEnergyUsageSeries(liveMetrics),
+    [liveMetrics],
+  )
+
+  return (
+    <section className="space-y-6">
+      <EnergyUsagePerTimeStepChart data={energyUsageSeries} />
+      <ServerFarmHeatmap
+        data={dashboardTelemetry.serverFarmUtilization}
+        title="Server Farm CPU Utilisation Heatmap"
+      />
+    </section>
+  )
+}
+
+export function DashboardOverview() {
+  const {
+    dashboardTelemetry,
+    liveMetrics,
+    savedModels,
+    selectedModel,
+    selectedRunType,
+    simParams,
+  } = useAppState()
+
+  if (isTrainingRun(selectedRunType)) {
+    return <TrainingDashboardOverview dashboardTelemetry={dashboardTelemetry} />
+  }
+
+  return (
+    <EvaluationDashboardOverview
+      liveMetrics={liveMetrics}
+      savedModels={savedModels}
+      selectedModel={selectedModel}
+      selectedRunType={selectedRunType}
+      simParams={simParams}
+    />
+  )
+}
+
+export default function DashboardVisualizations() {
+  const { dashboardTelemetry, liveMetrics, selectedRunType } = useAppState()
+
+  if (isTrainingRun(selectedRunType)) {
+    return <TrainingVisualizations dashboardTelemetry={dashboardTelemetry} />
+  }
+
+  return (
+    <EvaluationVisualizations
+      dashboardTelemetry={dashboardTelemetry}
+      liveMetrics={liveMetrics}
+    />
   )
 }

@@ -61,7 +61,7 @@ function PageIntro() {
         Training Results
       </h2>
       <p className="mt-1 text-sm text-slate-500">
-        Completed random, training, and inference runs.
+        Completed evaluation, training, and trained model runs.
       </p>
     </div>
   )
