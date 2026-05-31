@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -17,11 +18,16 @@ function getMetricTotalEnergyCost(point) {
   return point?.totalEnergyCost ?? point?.totalEnergy ?? point?.energyCost
 }
 
+function getMetricWallTime(point) {
+  return point?.stepTime
+}
+
 function buildEpisodeEnergyData(metrics) {
   return metrics.map((metric, index) => ({
     ...metric,
     episode: getMetricEpisode(metric, index),
     totalEnergyCost: getMetricTotalEnergyCost(metric),
+    wallTime: getMetricWallTime(metric),
   }))
 }
 
@@ -32,7 +38,7 @@ function PanelHeader() {
         Live Simulation Progression
       </h2>
       <p className="mt-2 text-sm font-normal text-slate-500">
-        Total energy cost per episode
+        Total energy cost and wall time per episode
       </p>
     </div>
   )
@@ -53,7 +59,7 @@ function LiveMetricsChart({ metrics }) {
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={episodeEnergyData}
-        margin={{ top: 10, right: 20, bottom: 8 }}
+        margin={{ top: 10, right: 36, bottom: 8 }}
       >
         <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
         <XAxis
@@ -69,10 +75,24 @@ function LiveMetricsChart({ metrics }) {
           tick={{ fill: '#64748b', fontSize: 12 }}
         />
         <YAxis
+          yAxisId="energy"
           label={{
             value: 'Total Energy Cost',
             angle: -90,
             position: 'insideLeft',
+            fill: '#64748b',
+          }}
+          stroke="#94a3b8"
+          tick={{ fill: '#64748b', fontSize: 12 }}
+          width={72}
+        />
+        <YAxis
+          yAxisId="wallTime"
+          orientation="right"
+          label={{
+            value: 'Wall Time',
+            angle: 90,
+            position: 'insideRight',
             fill: '#64748b',
           }}
           stroke="#94a3b8"
@@ -88,11 +108,23 @@ function LiveMetricsChart({ metrics }) {
           }}
           labelStyle={{ color: '#94a3b8' }}
         />
+        <Legend />
         <Line
+          yAxisId="energy"
           type="monotone"
           dataKey="totalEnergyCost"
           name="Total Energy Cost"
           stroke="#0ea5e9"
+          strokeWidth={3}
+          dot={false}
+          isAnimationActive={false}
+        />
+        <Line
+          yAxisId="wallTime"
+          type="monotone"
+          dataKey="wallTime"
+          name="Wall Time"
+          stroke="#22c55e"
           strokeWidth={3}
           dot={false}
           isAnimationActive={false}

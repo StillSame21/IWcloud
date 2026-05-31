@@ -3,12 +3,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
@@ -48,11 +45,6 @@ const diagnosticToneClasses = {
   success: 'border-l-emerald-500 bg-emerald-50 text-emerald-800',
 }
 
-const outcomeColors = {
-  accepted: '#10b981',
-  rejected: '#ef4444',
-}
-
 function formatNumber(value, maximumFractionDigits = 1) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits,
@@ -90,21 +82,6 @@ function buildKpiCards(kpis) {
       }`,
       helper: kpis.averageEnergyUsage.helper,
       tone: 'amber',
-    },
-  ]
-}
-
-function buildOutcomeData(taskOutcome) {
-  return [
-    {
-      name: 'Accepted',
-      value: taskOutcome.acceptedPercent,
-      fill: outcomeColors.accepted,
-    },
-    {
-      name: 'Rejected',
-      value: taskOutcome.rejectedPercent,
-      fill: outcomeColors.rejected,
     },
   ]
 }
@@ -399,65 +376,6 @@ function AverageEnergyUsageChart({ data }) {
   )
 }
 
-function TaskOutcomePanel({ outcome, pieData }) {
-  return (
-    <section className={chartCardClass}>
-      <SectionTitle title="Task Outcome and Timing" />
-      <div className="mt-4 grid min-h-80 grid-cols-1 items-center gap-6 md:grid-cols-[minmax(0,1fr)_180px]">
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                innerRadius={64}
-                outerRadius={92}
-                paddingAngle={2}
-                stroke="none"
-                isAnimationActive={false}
-              >
-                {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="space-y-5">
-          <TaskOutcomeStat
-            label="Accepted"
-            value={`${outcome.acceptedPercent}%`}
-            className="text-emerald-600"
-          />
-          <TaskOutcomeStat
-            label="Rejected"
-            value={`${outcome.rejectedPercent}%`}
-            className="text-rose-500"
-          />
-          <TaskOutcomeStat
-            label="Wall Time Ratio"
-            value={`${outcome.wallTimeRatio}x`}
-            helper="vs baseline"
-            className="text-slate-950"
-          />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TaskOutcomeStat({ className, helper, label, value }) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className={`text-2xl font-semibold ${className}`}>{value}</p>
-      {helper ? <p className="text-sm text-slate-500">{helper}</p> : null}
-    </div>
-  )
-}
-
 function ServerFarmHeatmap({ data }) {
   return (
     <section className={cardClass}>
@@ -543,10 +461,6 @@ export function DashboardOverview() {
 
 export default function DashboardVisualizations() {
   const { dashboardTelemetry } = useAppState()
-  const pieData = useMemo(
-    () => buildOutcomeData(dashboardTelemetry.taskOutcome),
-    [dashboardTelemetry.taskOutcome],
-  )
 
   return (
     <section className="space-y-6">
@@ -556,10 +470,6 @@ export default function DashboardVisualizations() {
         <ActorCriticLossChart data={dashboardTelemetry.lossSeries} />
         <ReplayBufferChart data={dashboardTelemetry.replaySeries} />
         <AverageEnergyUsageChart data={dashboardTelemetry.averageEnergySeries} />
-        <TaskOutcomePanel
-          outcome={dashboardTelemetry.taskOutcome}
-          pieData={pieData}
-        />
       </div>
 
       <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
