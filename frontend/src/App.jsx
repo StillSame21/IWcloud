@@ -7,7 +7,7 @@ import AppStateProvider from './context/AppStateProvider'
 const tabs = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'results', label: 'Training Results' },
-  { id: 'comparison', label: 'Comparison' },
+  { id: 'comparison', label: 'Evaluation Comparison' },
 ]
 
 const pagesByTab = {

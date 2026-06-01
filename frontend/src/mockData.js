@@ -232,7 +232,7 @@ export const dashboardTelemetry = {
       value: 'Convergence',
       helper: 'Reward slope flattening',
     },
-    taskAcceptance: {
+    jobAcceptance: {
       value: 84,
       helper: 'Up from 67% at ep 100',
     },
@@ -273,7 +273,7 @@ export const dashboardTelemetry = {
     { workload: '300 jobs', averageEnergy: 42.8 },
     { workload: '500 jobs', averageEnergy: 63.6 },
   ],
-  taskOutcome: {
+  jobOutcome: {
     acceptedPercent: 84,
     rejectedPercent: 16,
     wallTimeRatio: 0.96,
@@ -324,7 +324,8 @@ const generateMetricSeries = ({ start, drift, wave, rejectedEvery }) =>
     const decay = start - step * drift
     const energyCost = Math.max(18, decay + Math.sin(step / 4) * wave)
     const totalEnergyCost = round(energyCost)
-    const rejectedTasks = Math.floor(step / rejectedEvery)
+    const rejectedJobs = Math.floor(step / rejectedEvery)
+    const rejectedTasks = rejectedJobs
     const stepTime = 0.18 + Math.cos(step / 6) * 0.025 + step * 0.001
 
     return {
@@ -332,10 +333,141 @@ const generateMetricSeries = ({ start, drift, wave, rejectedEvery }) =>
       episode,
       energyCost: totalEnergyCost,
       totalEnergyCost,
+      rejectedJobs,
       rejectedTasks,
       stepTime: round(stepTime, 3),
     }
   })
+
+const generateTrainingRewardSeries = ({ rewardOffset = 0, totalEpisodes }) =>
+  Array.from({ length: 51 }, (_, index) => {
+    const episode = index * (totalEpisodes / 50)
+    const convergence = 1 / (1 + Math.exp(-(episode - 320) / 90))
+    const reward =
+      -430 + convergence * (1280 + rewardOffset) + Math.sin(episode / 44) * 42
+
+    return {
+      episode: round(episode, 0),
+      reward: round(reward),
+    }
+  })
+
+const generateTrainingLossSeries = ({ lossScale = 1, totalEpisodes }) =>
+  Array.from({ length: 51 }, (_, index) => {
+    const episode = index * (totalEpisodes / 50)
+    const actorLoss = (1.7 * Math.exp(-episode / 230) + 0.08) * lossScale
+    const criticLoss = (4.9 * Math.exp(-episode / 260) + 0.14) * lossScale
+
+    return {
+      episode: round(episode, 0),
+      actorLoss: round(actorLoss, 3),
+      criticLoss: round(criticLoss, 3),
+    }
+  })
+
+const generateTrainingReplaySeries = ({ qOffset = 0, totalEpisodes }) =>
+  Array.from({ length: 51 }, (_, index) => {
+    const episode = index * (totalEpisodes / 50)
+    const qValue = 82 * (1 - Math.exp(-episode / 180)) + qOffset
+    const bufferFill = Math.min(100, episode / 7.5)
+
+    return {
+      episode: round(episode, 0),
+      qValue: round(qValue + Math.sin(episode / 48) * 1.4, 2),
+      bufferFill: round(bufferFill, 1),
+    }
+  })
+
+const generateAverageEnergyByJobLoad = ({ baseEnergy = 10, energyFactor = 0.11 }) =>
+  [50, 100, 300, 500].map((jobs) => ({
+    jobs,
+    workload: `${jobs} jobs`,
+    averageEnergy: round(baseEnergy + jobs * energyFactor + Math.sin(jobs / 80) * 1.2),
+  }))
+
+const generateWallTimeByJobLoad = ({
+  baseWallTime = 0.2,
+  wallTimeFactor = 0.004,
+}) =>
+  [50, 100, 300, 500].map((jobs) => ({
+    jobs,
+    workload: `${jobs} jobs`,
+    averageWallTime: round(
+      baseWallTime + jobs * wallTimeFactor + Math.cos(jobs / 90) * 0.08,
+      3,
+    ),
+  }))
+
+const generateServerFarmAverageCpu = ({
+  cpuBase = 62,
+  farmCount = defaultSimulationParams.numberOfServerFarms,
+  spread = 9,
+}) =>
+  Array.from({ length: farmCount }, (_, index) => ({
+    farm: `Farm ${index + 1}`,
+    averageCpu: round(cpuBase + Math.sin((index + 1) * 1.4) * spread, 1),
+  }))
+
+const buildTrainingResults = ({
+  cpuBase,
+  currentEpisode = defaultTrainingParams.episodes,
+  energyFactor,
+  farmCount,
+  lossScale,
+  qOffset,
+  rewardOffset,
+  totalEpisodes = defaultTrainingParams.episodes,
+}) => ({
+  episode: {
+    current: currentEpisode,
+    total: totalEpisodes,
+  },
+  rewardSeries: generateTrainingRewardSeries({
+    rewardOffset,
+    totalEpisodes,
+  }),
+  lossSeries: generateTrainingLossSeries({
+    lossScale,
+    totalEpisodes,
+  }),
+  replaySeries: generateTrainingReplaySeries({
+    qOffset,
+    totalEpisodes,
+  }),
+  averageEnergyByJobLoad: generateAverageEnergyByJobLoad({
+    energyFactor,
+  }),
+  serverFarmAverageCpu: generateServerFarmAverageCpu({
+    cpuBase,
+    farmCount,
+  }),
+})
+
+const buildEvaluationResults = ({
+  cpuBase,
+  currentEpisode = 50,
+  energyFactor,
+  farmCount,
+  totalEpisodes = 50,
+  wallTimeBase,
+  wallTimeFactor,
+}) => ({
+  episode: {
+    current: currentEpisode,
+    total: totalEpisodes,
+  },
+  averageEnergyByJobLoad: generateAverageEnergyByJobLoad({
+    energyFactor,
+  }),
+  wallTimeByJobLoad: generateWallTimeByJobLoad({
+    baseWallTime: wallTimeBase,
+    wallTimeFactor,
+  }),
+  serverFarmAverageCpu: generateServerFarmAverageCpu({
+    cpuBase,
+    farmCount,
+  }),
+})
 
 const getEnergyCost = (point) => point.totalEnergyCost ?? point.energyCost
 
@@ -351,39 +483,33 @@ const summarizeMetrics = (metrics) => {
   return {
     totalSteps: metrics.length,
     finalEnergyCost: getEnergyCost(finalPoint),
+    rejectedJobs: finalPoint.rejectedJobs ?? finalPoint.rejectedTasks,
     rejectedTasks: finalPoint.rejectedTasks,
     totalEnergy: round(totalEnergy),
     avgStepTime: round(avgStepTime, 3),
   }
 }
 
-const buildRun = ({ id, type, dateTime, parameters, metrics }) => ({
+const buildRun = ({
+  id,
+  type,
+  dateTime,
+  evaluationResults,
+  parameters,
+  metrics,
+  trainingResults,
+}) => ({
   id,
   type,
   dateTime,
   parameters,
   metrics,
   summary: summarizeMetrics(metrics),
+  evaluationResults,
+  trainingResults,
 })
 
-export const runHistory = [
-  buildRun({
-    id: 'RUN-2401',
-    type: 'Evaluation Random Algorithm',
-    dateTime: '2026-05-25 09:30',
-    parameters: {
-      ...defaultSimulationParams,
-      numberOfJobs: 50,
-      numberOfTasks: 600,
-      numberOfServers: 5,
-    },
-    metrics: generateMetricSeries({
-      start: 126,
-      drift: 1.05,
-      wave: 4.2,
-      rejectedEvery: 18,
-    }),
-  }),
+export const trainingModelExamples = [
   buildRun({
     id: 'RUN-2402',
     type: 'Training',
@@ -401,23 +527,13 @@ export const runHistory = [
       wave: 5.8,
       rejectedEvery: 16,
     }),
-  }),
-  buildRun({
-    id: 'RUN-2403',
-    type: 'Evaluated Trained Model',
-    dateTime: '2026-05-27 11:45',
-    parameters: {
-      ...defaultSimulationParams,
-      numberOfJobs: 500,
-      numberOfTasks: 9000,
-      numberOfServerFarms: 10,
-      selectedModel: 'maddpg-energy-saver',
-    },
-    metrics: generateMetricSeries({
-      start: 136,
-      drift: 1.58,
-      wave: 3.4,
-      rejectedEvery: 25,
+    trainingResults: buildTrainingResults({
+      cpuBase: 68,
+      energyFactor: 0.112,
+      farmCount: 5,
+      lossScale: 1,
+      qOffset: 0,
+      rewardOffset: 20,
     }),
   }),
   buildRun({
@@ -438,5 +554,71 @@ export const runHistory = [
       wave: 4.9,
       rejectedEvery: 22,
     }),
+    trainingResults: buildTrainingResults({
+      cpuBase: 57,
+      energyFactor: 0.094,
+      farmCount: 2,
+      lossScale: 0.86,
+      qOffset: 4.5,
+      rewardOffset: 95,
+    }),
   }),
+]
+
+export const evaluationComparisonExamples = [
+  buildRun({
+    id: 'RUN-2401',
+    type: 'Evaluation Random Algorithm',
+    dateTime: '2026-05-25 09:30',
+    parameters: {
+      ...defaultSimulationParams,
+      numberOfJobs: 50,
+      numberOfTasks: 600,
+      numberOfServers: 5,
+    },
+    metrics: generateMetricSeries({
+      start: 126,
+      drift: 1.05,
+      wave: 4.2,
+      rejectedEvery: 18,
+    }),
+    evaluationResults: buildEvaluationResults({
+      cpuBase: 61,
+      energyFactor: 0.126,
+      farmCount: 2,
+      wallTimeBase: 0.26,
+      wallTimeFactor: 0.0062,
+    }),
+  }),
+  buildRun({
+    id: 'RUN-2403',
+    type: 'Evaluated Trained Model',
+    dateTime: '2026-05-27 11:45',
+    parameters: {
+      ...defaultSimulationParams,
+      numberOfJobs: 500,
+      numberOfTasks: 9000,
+      numberOfServerFarms: 10,
+      selectedModel: 'maddpg-energy-saver',
+    },
+    metrics: generateMetricSeries({
+      start: 136,
+      drift: 1.58,
+      wave: 3.4,
+      rejectedEvery: 25,
+    }),
+    evaluationResults: buildEvaluationResults({
+      cpuBase: 54,
+      energyFactor: 0.087,
+      farmCount: 10,
+      wallTimeBase: 0.18,
+      wallTimeFactor: 0.0041,
+    }),
+  }),
+]
+
+export const runHistory = [
+  evaluationComparisonExamples[0],
+  ...trainingModelExamples,
+  evaluationComparisonExamples[1],
 ]

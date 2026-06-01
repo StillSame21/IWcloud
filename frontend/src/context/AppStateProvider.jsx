@@ -16,6 +16,7 @@ const createInitialLivePoint = () => ({
   episode: 1,
   energyCost: 132,
   totalEnergyCost: 132,
+  rejectedJobs: 0,
   rejectedTasks: 0,
   stepTime: 0.18,
 })
@@ -23,6 +24,8 @@ const createInitialLivePoint = () => ({
 const createNextLivePoint = (previous) => {
   const nextStep = previous.step + 1
   const energyDrift = 1.1 + Math.sin(nextStep / 3) * 1.7
+  const rejectionIncrement =
+    nextStep % 17 === 0 || nextStep % 31 === 0 ? 1 : 0
   const energyCost = Math.max(
     18,
     previous.energyCost - energyDrift + Math.random() * 1.4,
@@ -33,8 +36,8 @@ const createNextLivePoint = (previous) => {
     episode: nextStep,
     energyCost: Number(energyCost.toFixed(2)),
     totalEnergyCost: Number(energyCost.toFixed(2)),
-    rejectedTasks:
-      previous.rejectedTasks + (nextStep % 17 === 0 || nextStep % 31 === 0 ? 1 : 0),
+    rejectedJobs: (previous.rejectedJobs ?? 0) + rejectionIncrement,
+    rejectedTasks: (previous.rejectedTasks ?? 0) + rejectionIncrement,
     stepTime: Number((0.18 + Math.sin(nextStep / 5) * 0.025).toFixed(3)),
   }
 }

@@ -1,7 +1,5 @@
 import { useMemo } from 'react'
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -27,12 +25,10 @@ const tooltipStyle = {
 }
 const axisTick = { fill: '#64748b', fontSize: 12 }
 const trainingRunType = 'training'
-const electricityPricePerKwh = 0.16
 
 const kpiToneClasses = {
   sky: 'border-l-sky-500',
   emerald: 'border-l-emerald-500',
-  amber: 'border-l-amber-400',
 }
 
 const phaseToneClasses = {
@@ -53,14 +49,6 @@ function formatNumber(value, maximumFractionDigits = 1) {
   }).format(value)
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    maximumFractionDigits: 2,
-    style: 'currency',
-  }).format(value)
-}
-
 function getMetricStep(point, index) {
   return point?.step ?? index + 1
 }
@@ -75,13 +63,6 @@ function getMetricEnergyUsage(point) {
 
 function getMetricWallTime(point) {
   return point?.wallTime ?? point?.stepTime ?? 0
-}
-
-function getMetricElectricityPrice(point) {
-  return (
-    point?.electricityPrice ??
-    Number((getMetricEnergyUsage(point) * electricityPricePerKwh).toFixed(2))
-  )
 }
 
 function getAverage(values) {
@@ -122,20 +103,11 @@ function buildTrainingKpiCards(kpis) {
       tone: 'emerald',
     },
     {
-      id: 'task-acceptance',
-      label: 'Task Acceptance',
-      value: `${kpis.taskAcceptance.value}%`,
-      helper: kpis.taskAcceptance.helper,
+      id: 'job-acceptance',
+      label: 'Job Acceptance',
+      value: `${kpis.jobAcceptance.value}%`,
+      helper: kpis.jobAcceptance.helper,
       tone: 'emerald',
-    },
-    {
-      id: 'average-energy-usage',
-      label: 'Average Energy Usage',
-      value: `${formatNumber(kpis.averageEnergyUsage.value)} ${
-        kpis.averageEnergyUsage.unit
-      }`,
-      helper: kpis.averageEnergyUsage.helper,
-      tone: 'amber',
     },
   ]
 }
@@ -151,16 +123,12 @@ function buildEvaluationKpiCards({
   const currentEpisode = liveMetrics.length
     ? getMetricEpisode(lastMetric, liveMetrics.length - 1)
     : 0
-  const rejectedTasks = lastMetric?.rejectedTasks ?? 0
-  const totalTasks = simParams.numberOfTasks ?? 0
-  const acceptedTasks = Math.max(totalTasks - rejectedTasks, 0)
+  const rejectedJobs = lastMetric?.rejectedJobs ?? 0
+  const totalJobs = simParams.numberOfJobs ?? 0
+  const acceptedJobs = Math.max(totalJobs - rejectedJobs, 0)
   const acceptanceRate =
-    totalTasks > 0 ? (acceptedTasks / totalTasks) * 100 : 0
+    totalJobs > 0 ? (acceptedJobs / totalJobs) * 100 : 0
   const averageWallTime = getAverage(liveMetrics.map(getMetricWallTime))
-  const averageEnergyUsage = getAverage(liveMetrics.map(getMetricEnergyUsage))
-  const averageElectricityPrice = getAverage(
-    liveMetrics.map(getMetricElectricityPrice),
-  )
   const selectedModelName = getSelectedModelName(savedModels, selectedModel)
   const episodeHelper =
     selectedRunType === 'inference' && selectedModelName
@@ -176,13 +144,13 @@ function buildEvaluationKpiCards({
       tone: 'sky',
     },
     {
-      id: 'task-acceptance-rate',
-      label: 'Task Acceptance Rate',
+      id: 'job-acceptance-rate',
+      label: 'Job Acceptance Rate',
       value: `${formatNumber(acceptanceRate, 1)}%`,
-      helper: `${formatNumber(acceptedTasks, 0)}/${formatNumber(
-        totalTasks,
+      helper: `${formatNumber(acceptedJobs, 0)}/${formatNumber(
+        totalJobs,
         0,
-      )} tasks accepted`,
+      )} jobs accepted`,
       tone: 'emerald',
     },
     {
@@ -191,15 +159,6 @@ function buildEvaluationKpiCards({
       value: `${formatNumber(averageWallTime, 3)}s`,
       helper: `${formatNumber(liveMetrics.length, 0)} time steps sampled`,
       tone: 'sky',
-    },
-    {
-      id: 'average-electricity',
-      label: 'Average Electricity Usage and Price',
-      value: `${formatNumber(averageEnergyUsage, 1)} kWh / ${formatCurrency(
-        averageElectricityPrice,
-      )}`,
-      helper: 'Average per time step',
-      tone: 'amber',
     },
   ]
 }
@@ -486,29 +445,6 @@ function ReplayBufferChart({ data }) {
   )
 }
 
-function AverageEnergyUsageChart({ data }) {
-  return (
-    <ChartCard title="Average Energy Usage">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
-          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
-          <XAxis dataKey="workload" stroke={axisStroke} tick={axisTick} />
-          <YAxis stroke={axisStroke} tick={axisTick} width={52} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
-          <Bar
-            dataKey="averageEnergy"
-            name="Average Energy"
-            fill="#10b981"
-            radius={[6, 6, 0, 0]}
-            isAnimationActive={false}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  )
-}
-
 function EnergyUsagePerTimeStepChart({ data }) {
   return (
     <ChartCard title="Energy Usage Per Time Step">
@@ -677,7 +613,6 @@ function TrainingVisualizations({ dashboardTelemetry }) {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ActorCriticLossChart data={dashboardTelemetry.lossSeries} />
         <ReplayBufferChart data={dashboardTelemetry.replaySeries} />
-        <AverageEnergyUsageChart data={dashboardTelemetry.averageEnergySeries} />
       </div>
 
       <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
