@@ -13,12 +13,36 @@ class CloudSchedulingEnv(ParallelEnv):
     num_jobs,
     num_server_farms,
     num_servers,
+    num_tasks=None,
+    job_arrival_lambda=0.5,
+    task_arrival_mu=5,
+    task_arrival_variance=1.6,
+    request_cpu_range=None,
+    request_ram_range=None,
+    num_vm_types=10,
+    energy_alpha=None,
+    energy_beta=10,
+    optimal_utilization_rate=0.7,
+    static_power=0.035,
+    show_progress=True,
     render_mode=None
   ):
     
     self.num_jobs = num_jobs
+    self.num_tasks = num_tasks
     self.num_server_farms = num_server_farms
     self.num_servers = num_servers
+    self.job_arrival_lambda = job_arrival_lambda
+    self.task_arrival_mu = task_arrival_mu
+    self.task_arrival_variance = task_arrival_variance
+    self.request_cpu_range = request_cpu_range
+    self.request_ram_range = request_ram_range
+    self.num_vm_types = num_vm_types
+    self.energy_alpha = energy_alpha
+    self.energy_beta = energy_beta
+    self.optimal_utilization_rate = optimal_utilization_rate
+    self.static_power = static_power
+    self.show_progress = show_progress
     assert self.num_servers / self.num_server_farms >= 1, "Server number must be possible to be divided among server farm number."
     self.server_farm_id = 0
     self.server_id = 0
@@ -91,14 +115,33 @@ class CloudSchedulingEnv(ParallelEnv):
     self.timeline.reset()
     
     self.jobs.clear()
-    job_sequence = initialize_user_requests_queue(self.num_jobs, seed)
+    job_sequence = initialize_user_requests_queue(
+      self.num_jobs,
+      seed,
+      total_tasks=self.num_tasks,
+      lambda_=self.job_arrival_lambda,
+      runtime_mu=self.task_arrival_mu,
+      runtime_variance=self.task_arrival_variance,
+      request_cpu_range=self.request_cpu_range,
+      request_ram_range=self.request_ram_range,
+      show_progress=self.show_progress,
+    )
     for timeline, job in job_sequence:
       self.timeline.push(
         timeline, TimelineEvent(TimelineEvent.Type.JOB_ARRIVAL, data={"job": job})
       )
       self.jobs[job.id] = job
 
-    server_farms = initialize_server_farms(self.num_servers, self.num_server_farms, seed)
+    server_farms = initialize_server_farms(
+      self.num_servers,
+      self.num_server_farms,
+      seed,
+      num_vm_types=self.num_vm_types,
+      energy_alpha=self.energy_alpha,
+      energy_beta=self.energy_beta,
+      static_power=self.static_power,
+      optimal_utilization_rate=self.optimal_utilization_rate,
+    )
     for server_farm in server_farms:
       self.server_farms[server_farm.id] = server_farm
     

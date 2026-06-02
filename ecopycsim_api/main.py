@@ -1,10 +1,15 @@
 from datetime import datetime
 from typing import Any
-from uuid import uuid4
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from ecopycsim_api.dashboard_runner import (
+  DashboardRunner,
+  RunRequestError,
+  TERMINAL_EVENT_TYPES,
+)
 
 
 class StartRunRequest(BaseModel):
@@ -31,12 +36,7 @@ app.add_middleware(
   allow_headers=['*'],
 )
 
-runtime_state: dict[str, Any] = {
-  'active_run_id': None,
-  'last_payload': None,
-  'started_at': None,
-  'training_status': 'Idle',
-}
+runner = DashboardRunner()
 
 
 def timestamp() -> str:
@@ -54,60 +54,102 @@ def root() -> dict[str, str]:
 
 @app.get('/api/health')
 def health_check() -> dict[str, Any]:
+  run_status = runner.get_status()
   return {
     'connected': True,
-    'trainingStatus': runtime_state['training_status'],
+    'trainingStatus': run_status['status'].title(),
     'checkedAt': timestamp(),
-    'activeRunId': runtime_state['active_run_id'],
+    'activeRunId': run_status['activeRunId'],
   }
+
+
+@app.get('/api/dashboard/config')
+def dashboard_config() -> dict[str, Any]:
+  return runner.config()
+
+
+@app.get('/api/models')
+def list_models() -> list[dict[str, Any]]:
+  return runner.list_models()
+
+
+@app.get('/api/runs/history')
+def list_run_history() -> list[dict[str, Any]]:
+  return runner.list_run_history()
 
 
 @app.get('/api/runs/status')
 def run_status() -> dict[str, Any]:
-  return {
-    'status': runtime_state['training_status'].lower(),
-    'activeRunId': runtime_state['active_run_id'],
-    'startedAt': runtime_state['started_at'],
-    'payload': runtime_state['last_payload'],
-  }
+  return runner.get_status()
 
 
 @app.post('/api/runs/start', status_code=status.HTTP_202_ACCEPTED)
-def start_run(payload: StartRunRequest) -> dict[str, Any]:
-  run_id = f'LIVE-{uuid4().hex[:8].upper()}'
-  payload_data = payload.model_dump()
-
-  runtime_state.update(
-    {
-      'active_run_id': run_id,
-      'last_payload': payload_data,
-      'started_at': timestamp(),
-      'training_status': 'Running',
-    },
-  )
+async def start_run(payload: StartRunRequest) -> dict[str, Any]:
+  try:
+    session = await runner.start_run(payload.model_dump())
+  except RunRequestError as error:
+    raise HTTPException(
+      status_code=error.status_code,
+      detail={'message': error.message, **error.details},
+    ) from error
 
   return {
     'accepted': True,
-    'runId': run_id,
+    'runId': session.run_id,
     'status': 'running',
-    'payload': payload_data,
+    'streamUrl': f'/api/runs/{session.run_id}/stream',
+    'payload': {
+      'runType': session.run_type,
+      'simParams': session.sim_params,
+      'trainingParams': session.training_params,
+      'selectedModel': session.selected_model,
+    },
   }
+
+
+@app.post('/api/runs/{run_id}/stop')
+async def stop_run_by_id(run_id: str) -> dict[str, Any]:
+  return await runner.stop_run(run_id)
 
 
 @app.post('/api/runs/stop')
-def stop_run() -> dict[str, Any]:
-  stopped_run_id = runtime_state['active_run_id']
+async def stop_run() -> dict[str, Any]:
+  return await runner.stop_run()
 
-  runtime_state.update(
-    {
-      'active_run_id': None,
-      'training_status': 'Idle',
-    },
-  )
 
-  return {
-    'stopped': True,
-    'runId': stopped_run_id,
-    'status': 'stopped',
-  }
+@app.websocket('/api/runs/{run_id}/stream')
+async def stream_run_events(websocket: WebSocket, run_id: str) -> None:
+  await websocket.accept()
+  session = runner.sessions.get(run_id)
 
+  if not session:
+    await websocket.send_json(
+      {
+        'type': 'run_error',
+        'runId': run_id,
+        'message': 'Run not found.',
+      },
+    )
+    await websocket.close()
+    return
+
+  queue = session.subscribe()
+
+  try:
+    for event in session.events[:]:
+      await websocket.send_json(event)
+      if event.get('type') in TERMINAL_EVENT_TYPES:
+        await websocket.close()
+        return
+
+    while True:
+      event = await queue.get()
+      await websocket.send_json(event)
+
+      if event.get('type') in TERMINAL_EVENT_TYPES:
+        await websocket.close()
+        return
+  except WebSocketDisconnect:
+    return
+  finally:
+    session.unsubscribe(queue)

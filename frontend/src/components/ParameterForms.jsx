@@ -1,8 +1,3 @@
-import {
-  simulationParameterFields,
-  trainingParameterFields,
-} from '../mockData'
-
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20'
 
@@ -25,7 +20,9 @@ const parseValue = (currentValue, nextValue) =>
 function ParameterSection({
   description,
   fields,
+  lockedFields = [],
   layout = 'default',
+  lockedMessage = '',
   onParamChange,
   params,
   title,
@@ -43,6 +40,8 @@ function ParameterSection({
       <ParameterGrid
         fields={fields}
         gridClass={gridClass}
+        lockedFields={lockedFields}
+        lockedMessage={lockedMessage}
         params={params}
         onParamChange={onParamChange}
       />
@@ -50,13 +49,22 @@ function ParameterSection({
   )
 }
 
-function ParameterGrid({ fields, gridClass, params, onParamChange }) {
+function ParameterGrid({
+  fields,
+  gridClass,
+  lockedFields,
+  lockedMessage,
+  params,
+  onParamChange,
+}) {
   return (
     <div className={gridClass}>
       {fields.map((field) => (
         <ParameterField
           key={field.key}
+          disabled={field.readOnly || lockedFields.includes(field.key)}
           field={field}
+          lockedMessage={lockedFields.includes(field.key) ? lockedMessage : ''}
           value={params[field.key]}
           onChange={(value) => onParamChange(field.key, value)}
         />
@@ -65,44 +73,80 @@ function ParameterGrid({ fields, gridClass, params, onParamChange }) {
   )
 }
 
-function ParameterField({ field, value, onChange }) {
+function ParameterField({ disabled, field, lockedMessage, value, onChange }) {
   return (
-    <label className={fieldCardClass}>
+    <label className={`${fieldCardClass} ${disabled ? 'opacity-70' : ''}`}>
       <div className={fieldHeaderClass}>
         <div>
           <span className="block text-sm font-medium text-slate-700">
             {field.label}
           </span>
-          {field.hint ? (
-            <span className="text-xs text-slate-500">{field.hint}</span>
+          {lockedMessage || field.hint ? (
+            <span className="text-xs text-slate-500">
+              {lockedMessage || field.hint}
+            </span>
           ) : null}
         </div>
       </div>
-      <ParameterInput field={field} value={value} onChange={onChange} />
+      <ParameterInput
+        disabled={disabled}
+        field={field}
+        value={value}
+        onChange={onChange}
+      />
     </label>
   )
 }
 
-function ParameterInput({ field, value, onChange }) {
+function ParameterInput({ disabled, field, value, onChange }) {
   if (field.control === 'select') {
-    return <SelectInput field={field} value={value} onChange={onChange} />
+    return (
+      <SelectInput
+        disabled={disabled}
+        field={field}
+        value={value}
+        onChange={onChange}
+      />
+    )
   }
 
   if (field.control === 'slider') {
-    return <SliderInput field={field} value={value} onChange={onChange} />
+    return (
+      <SliderInput
+        disabled={disabled}
+        field={field}
+        value={value}
+        onChange={onChange}
+      />
+    )
   }
 
   if (field.control === 'dualRange') {
-    return <DualRangeInput field={field} value={value} onChange={onChange} />
+    return (
+      <DualRangeInput
+        disabled={disabled}
+        field={field}
+        value={value}
+        onChange={onChange}
+      />
+    )
   }
 
-  return <BasicInput field={field} value={value} onChange={onChange} />
+  return (
+    <BasicInput
+      disabled={disabled}
+      field={field}
+      value={value}
+      onChange={onChange}
+    />
+  )
 }
 
-function SelectInput({ field, value, onChange }) {
+function SelectInput({ disabled, field, value, onChange }) {
   return (
     <select
       className={inputClass}
+      disabled={disabled}
       value={value}
       onChange={(event) => onChange(parseValue(value, event.target.value))}
     >
@@ -115,7 +159,7 @@ function SelectInput({ field, value, onChange }) {
   )
 }
 
-function SliderInput({ field, value, onChange }) {
+function SliderInput({ disabled, field, value, onChange }) {
   return (
     <div className="space-y-2">
       <RangeMeta field={field}>
@@ -127,6 +171,7 @@ function SliderInput({ field, value, onChange }) {
         min={field.min}
         max={field.max}
         step={field.step}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       />
@@ -134,7 +179,7 @@ function SliderInput({ field, value, onChange }) {
   )
 }
 
-function DualRangeInput({ field, value, onChange }) {
+function DualRangeInput({ disabled, field, value, onChange }) {
   const [minValue, maxValue] = value
   const updateMinimum = (nextValue) =>
     onChange([Math.min(nextValue, maxValue), maxValue])
@@ -151,12 +196,14 @@ function DualRangeInput({ field, value, onChange }) {
       <div className="grid grid-cols-2 gap-2">
         <RangeInput
           label="Min"
+          disabled={disabled}
           field={field}
           value={minValue}
           onChange={updateMinimum}
         />
         <RangeInput
           label="Max"
+          disabled={disabled}
           field={field}
           value={maxValue}
           onChange={updateMaximum}
@@ -177,7 +224,7 @@ function RangeMeta({ field, children }) {
   )
 }
 
-function RangeInput({ label, field, value, onChange }) {
+function RangeInput({ disabled, label, field, value, onChange }) {
   return (
     <label className="space-y-1 text-xs text-slate-500">
       {label}
@@ -187,6 +234,7 @@ function RangeInput({ label, field, value, onChange }) {
         min={field.min}
         max={field.max}
         step={field.step}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
       />
@@ -194,12 +242,13 @@ function RangeInput({ label, field, value, onChange }) {
   )
 }
 
-function BasicInput({ field, value, onChange }) {
+function BasicInput({ disabled, field, value, onChange }) {
   return (
     <input
       className={inputClass}
       type={field.control === 'text' ? 'text' : 'number'}
       step={field.step}
+      disabled={disabled}
       value={value}
       onChange={(event) => onChange(parseValue(value, event.target.value))}
     />
@@ -207,7 +256,10 @@ function BasicInput({ field, value, onChange }) {
 }
 
 export function SimulationParameters({
+  fields = [],
   layout = 'default',
+  lockedFields = [],
+  lockedMessage = '',
   params,
   onParamChange,
 }) {
@@ -215,7 +267,9 @@ export function SimulationParameters({
     <ParameterSection
       title="Simulation Parameters"
       description="EcoPyCSIM Table 3 inputs"
-      fields={simulationParameterFields}
+      fields={fields}
+      lockedFields={lockedFields}
+      lockedMessage={lockedMessage}
       layout={layout}
       params={params}
       onParamChange={onParamChange}
@@ -224,6 +278,7 @@ export function SimulationParameters({
 }
 
 export function TrainingParameters({
+  fields = [],
   layout = 'default',
   params,
   onParamChange,
@@ -232,7 +287,7 @@ export function TrainingParameters({
     <ParameterSection
       title="Training Parameters"
       description="MADDPG Table 2 hyperparameters"
-      fields={trainingParameterFields}
+      fields={fields}
       layout={layout}
       params={params}
       onParamChange={onParamChange}

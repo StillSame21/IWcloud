@@ -13,21 +13,22 @@ import {
 } from 'recharts'
 import StatusBadge from './StatusBadge'
 import { useAppState } from '../context/useAppState'
+import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
 const maxSelectedRuns = 2
 const evaluationRunTypes = [
   'Evaluation Random Algorithm',
   'Evaluated Trained Model',
 ]
-const chartColors = ['#0ea5e9', '#10b981']
+const chartColors = ['#2563eb', '#d97706']
 const workloadLineColors = {
-  'Evaluated Trained Model': '#737373',
-  'Evaluation Random Algorithm': '#ef4444',
+  'Evaluated Trained Model': '#2563eb',
+  'Evaluation Random Algorithm': '#d97706',
 }
 const chartGridStroke = '#e2e8f0'
 const axisStroke = '#94a3b8'
 const axisTick = { fill: '#64748b', fontSize: 12 }
-const electricityPricePerKwh = 0.16
+const energyPriceFactor = 0.16
 const tooltipStyle = {
   borderColor: '#334155',
   borderRadius: '12px',
@@ -48,14 +49,6 @@ function formatNumber(value, maximumFractionDigits = 2) {
   }).format(value ?? 0)
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    maximumFractionDigits: 2,
-    style: 'currency',
-  }).format(value ?? 0)
-}
-
 function formatPercent(value) {
   return `${formatNumber(value, 1)}%`
 }
@@ -68,12 +61,16 @@ function getEvaluationRuns(runHistory) {
 }
 
 function getRunDisplayName(run) {
+  if (run.displayName) {
+    return run.displayName
+  }
+
   if (run.type === 'Evaluation Random Algorithm') {
-    return 'Random Algorithm'
+    return 'Random Evaluation'
   }
 
   if (run.type === 'Evaluated Trained Model') {
-    return 'MADDPG'
+    return 'MADDPG Evaluation'
   }
 
   return run.id
@@ -136,7 +133,7 @@ function getAverageEnergyPerEpisode(run) {
 }
 
 function getAverageElectricityPricePerEpisode(run) {
-  return getAverageEnergyPerEpisode(run) * electricityPricePerKwh
+  return getAverageEnergyPerEpisode(run) * energyPriceFactor
 }
 
 function getRejectedJobs(run) {
@@ -289,7 +286,9 @@ function RunSelectorCard({ isDisabled, isSelected, onToggle, run }) {
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-950">{run.id}</span>
+            <span className="font-semibold text-slate-950">
+              {getRunDisplayName(run)}
+            </span>
             <StatusBadge label={run.type} />
           </div>
           <p className="mt-1 text-sm text-slate-500">{run.dateTime}</p>
@@ -303,11 +302,11 @@ function RunSelectorCard({ isDisabled, isSelected, onToggle, run }) {
             />
             <SelectorStat
               label="Avg Energy"
-              value={`${formatNumber(getAverageEnergyPerEpisode(run), 1)} kWh`}
+              value={formatNumber(getAverageEnergyPerEpisode(run), 1)}
             />
             <SelectorStat
               label="Avg Price"
-              value={formatCurrency(getAverageElectricityPricePerEpisode(run))}
+              value={formatNumber(getAverageElectricityPricePerEpisode(run), 2)}
             />
             <SelectorStat
               label="Job Acceptance"
@@ -353,7 +352,7 @@ function ConfigurationTable({ selectedRuns }) {
               <th className={tableHeadingClass}>Configuration</th>
               {selectedRuns.map((run) => (
                 <th key={run.id} className={tableHeadingClass}>
-                  {run.id}
+                  {getRunDisplayName(run)}
                 </th>
               ))}
             </tr>
@@ -476,20 +475,26 @@ function buildWorkloadComparisonData(selectedRuns, getPoints, getValue) {
   })
 }
 
-function buildEnergyUsagePerWorkloadData(selectedRuns) {
+function buildEnergyWorkloadData(selectedRuns) {
   return buildWorkloadComparisonData(
     selectedRuns,
     (run) => run.evaluationResults.averageEnergyByJobLoad,
-    (point) => point.averageEnergy,
-  )
-}
+    (point, run) => ({
+      [`${run.id}-energy`]: point.averageEnergy,
+      [`${run.id}-price`]: Number((point.averageEnergy * energyPriceFactor).toFixed(2)),
+    }),
+  ).map((row) => {
+    const nextRow = { jobs: row.jobs, workload: row.workload }
 
-function buildEnergyPricePerWorkloadData(selectedRuns) {
-  return buildWorkloadComparisonData(
-    selectedRuns,
-    (run) => run.evaluationResults.averageEnergyByJobLoad,
-    (point) => Number((point.averageEnergy * electricityPricePerKwh).toFixed(2)),
-  )
+    selectedRuns.forEach((run) => {
+      const values = row[run.id]
+
+      nextRow[`${run.id}-energy`] = values?.[`${run.id}-energy`]
+      nextRow[`${run.id}-price`] = values?.[`${run.id}-price`]
+    })
+
+    return nextRow
+  })
 }
 
 function buildWallTimePerWorkloadData(selectedRuns) {
@@ -529,26 +534,32 @@ function buildServerFarmCpuData(selectedRuns) {
 }
 
 function EnergyPerTimeStepChart({ data, selectedRuns }) {
+  const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
+    zeroMin: true,
+  })
+
   return (
     <ChartCard
       title="Energy Per Time Step"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 48 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
             dataKey="timeStep"
+            height={58}
             label={{
               value: 'Time Step',
               position: 'insideBottom',
-              offset: -8,
+              offset: -4,
               fill: '#64748b',
             }}
             stroke={axisStroke}
             tick={axisTick}
           />
           <YAxis
+            domain={yDomain}
             label={{
               value: 'Energy',
               angle: -90,
@@ -557,10 +568,11 @@ function EnergyPerTimeStepChart({ data, selectedRuns }) {
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
             width={72}
           />
           <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
           {selectedRuns.map((run, index) => (
             <Line
               key={run.id}
@@ -613,26 +625,32 @@ function JobAcceptanceRateCard({ selectedRuns }) {
 }
 
 function WallTimePerWorkloadChart({ data, selectedRuns }) {
+  const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
+    zeroMin: true,
+  })
+
   return (
     <ChartCard
       title="Wall Time Per Workload / Number of Jobs"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 24 }}>
+        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 56 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
             dataKey="jobs"
+            height={64}
             label={{
               value: 'Number of Jobs',
               position: 'insideBottom',
-              offset: -10,
+              offset: -6,
               fill: '#64748b',
             }}
             stroke={axisStroke}
             tick={axisTick}
           />
           <YAxis
+            domain={yDomain}
             label={{
               value: 'Wall Time (s)',
               angle: -90,
@@ -641,6 +659,7 @@ function WallTimePerWorkloadChart({ data, selectedRuns }) {
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
             width={72}
           />
           <Tooltip
@@ -650,6 +669,150 @@ function WallTimePerWorkloadChart({ data, selectedRuns }) {
               name,
             ]}
             labelFormatter={(jobs) => `${formatNumber(jobs, 0)} jobs`}
+          />
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
+          {selectedRuns.map((run, index) => (
+            <Bar
+              key={run.id}
+              dataKey={run.id}
+              name={getRunDisplayName(run)}
+              fill={getRunChartColor(run, index)}
+              radius={[6, 6, 0, 0]}
+              isAnimationActive={false}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
+  const energyKeys = selectedRuns.map((run) => `${run.id}-energy`)
+  const priceKeys = selectedRuns.map((run) => `${run.id}-price`)
+  const energyDomain = getAdaptiveDomain(data, energyKeys, {
+    zeroMin: true,
+  })
+  const priceDomain = getAdaptiveDomain(data, priceKeys, { zeroMin: true })
+
+  return (
+    <ChartCard
+      title="Energy Usage and Price Per Workload / Number of Jobs"
+      bodyClass="mt-4 h-[24rem]"
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          barCategoryGap="18%"
+          barGap={4}
+          margin={{ top: 12, right: 48, bottom: 58, left: 16 }}
+        >
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis
+            dataKey="workload"
+            height={66}
+            label={{
+              value: 'Number of Jobs',
+              position: 'insideBottom',
+              offset: -6,
+              fill: '#64748b',
+            }}
+            stroke={axisStroke}
+            tick={axisTick}
+          />
+          <YAxis
+            yAxisId="energy"
+            domain={energyDomain}
+            label={{
+              value: 'Energy Usage',
+              angle: -90,
+              position: 'insideLeft',
+              fill: '#64748b',
+            }}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={76}
+          />
+          <YAxis
+            yAxisId="price"
+            orientation="right"
+            domain={priceDomain}
+            label={{
+              value: 'Energy Price',
+              angle: 90,
+              position: 'insideRight',
+              fill: '#64748b',
+            }}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={76}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value, name) => [
+              formatNumber(value, 2),
+              name,
+            ]}
+          />
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 14 }} />
+          {selectedRuns.map((run, index) => (
+            <Bar
+              key={`${run.id}-energy`}
+              yAxisId="energy"
+              dataKey={`${run.id}-energy`}
+              name={`${getRunDisplayName(run)} energy usage`}
+              fill={getRunChartColor(run, index)}
+              radius={[6, 6, 0, 0]}
+              isAnimationActive={false}
+            />
+          ))}
+          {selectedRuns.map((run, index) => (
+            <Bar
+              key={`${run.id}-price`}
+              yAxisId="price"
+              dataKey={`${run.id}-price`}
+              name={`${getRunDisplayName(run)} energy price`}
+              fill={getRunChartColor(run, index)}
+              fillOpacity={0.42}
+              stroke={getRunChartColor(run, index)}
+              strokeWidth={1.5}
+              radius={[6, 6, 0, 0]}
+              isAnimationActive={false}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function ServerFarmCpuComparisonChart({ data, selectedRuns }) {
+  return (
+    <ChartCard
+      title="Server Farm CPU Utilisation Rate"
+      bodyClass="mt-4 h-[24rem]"
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
+          <XAxis dataKey="farm" stroke={axisStroke} tick={axisTick} />
+          <YAxis
+            domain={[0, 1]}
+            label={{
+              value: 'CPU Utilization Rate',
+              angle: -90,
+              position: 'insideLeft',
+              fill: '#64748b',
+            }}
+            stroke={axisStroke}
+            tick={axisTick}
+            width={64}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value) => formatNumber(value, 2)}
           />
           <Legend />
           {selectedRuns.map((run, index) => (
@@ -668,150 +831,13 @@ function WallTimePerWorkloadChart({ data, selectedRuns }) {
   )
 }
 
-function WorkloadLineChart({
-  data,
-  formatValue,
-  selectedRuns,
-  title,
-  yAxisLabel,
-}) {
-  return (
-    <ChartCard
-      title={title}
-      bodyClass="mt-4 h-[24rem]"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 28, bottom: 24, left: 8 }}>
-          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
-          <XAxis
-            dataKey="jobs"
-            type="number"
-            domain={['dataMin', 'dataMax']}
-            ticks={data.map((point) => point.jobs)}
-            label={{
-              value: 'Number of Jobs',
-              position: 'insideBottom',
-              offset: -10,
-              fill: '#64748b',
-            }}
-            stroke={axisStroke}
-            tick={axisTick}
-          />
-          <YAxis
-            label={{
-              value: yAxisLabel,
-              angle: -90,
-              position: 'insideLeft',
-              fill: '#64748b',
-            }}
-            stroke={axisStroke}
-            tick={axisTick}
-            width={76}
-          />
-          <Tooltip
-            contentStyle={tooltipStyle}
-            formatter={(value, name) => [
-              formatValue(value),
-              name,
-            ]}
-            labelFormatter={(jobs) => `${formatNumber(jobs, 0)} jobs`}
-          />
-          <Legend />
-          {selectedRuns.map((run, index) => (
-            <Line
-              key={run.id}
-              type="linear"
-              dataKey={run.id}
-              name={getRunDisplayName(run)}
-              stroke={getRunChartColor(run, index)}
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 6 }}
-              connectNulls
-              isAnimationActive={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  )
-}
-
-function EnergyUsagePerWorkloadChart({ data, selectedRuns }) {
-  return (
-    <WorkloadLineChart
-      data={data}
-      formatValue={(value) => `${formatNumber(value, 2)} kWh`}
-      selectedRuns={selectedRuns}
-      title="Energy Usage Per Workload / Number of Jobs"
-      yAxisLabel="Energy Usage (kWh)"
-    />
-  )
-}
-
-function EnergyPricePerWorkloadChart({ data, selectedRuns }) {
-  return (
-    <WorkloadLineChart
-      data={data}
-      formatValue={formatCurrency}
-      selectedRuns={selectedRuns}
-      title="Energy Price Per Workload / Number of Jobs"
-      yAxisLabel="Energy Price ($)"
-    />
-  )
-}
-
-function ServerFarmCpuComparisonChart({ data, selectedRuns }) {
-  return (
-    <ChartCard
-      title="Server Farm CPU Utilisation"
-      bodyClass="mt-4 h-[24rem]"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
-          <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
-          <XAxis dataKey="farm" stroke={axisStroke} tick={axisTick} />
-          <YAxis
-            domain={[0, 100]}
-            label={{
-              value: 'CPU %',
-              angle: -90,
-              position: 'insideLeft',
-              fill: '#64748b',
-            }}
-            stroke={axisStroke}
-            tick={axisTick}
-            width={64}
-          />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
-          {selectedRuns.map((run, index) => (
-            <Bar
-              key={run.id}
-              dataKey={run.id}
-              name={run.id}
-              fill={chartColors[index]}
-              radius={[6, 6, 0, 0]}
-              isAnimationActive={false}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  )
-}
-
 function ComparisonResults({ selectedRuns }) {
   const energyPerTimeStepData = useMemo(
     () => buildEnergyPerTimeStepData(selectedRuns),
     [selectedRuns],
   )
-  const energyUsagePerWorkloadData = useMemo(
-    () => buildEnergyUsagePerWorkloadData(selectedRuns),
-    [selectedRuns],
-  )
-  const energyPricePerWorkloadData = useMemo(
-    () => buildEnergyPricePerWorkloadData(selectedRuns),
+  const energyWorkloadData = useMemo(
+    () => buildEnergyWorkloadData(selectedRuns),
     [selectedRuns],
   )
   const wallTimePerWorkloadData = useMemo(
@@ -837,16 +863,10 @@ function ComparisonResults({ selectedRuns }) {
           selectedRuns={selectedRuns}
         />
       </div>
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <EnergyUsagePerWorkloadChart
-          data={energyUsagePerWorkloadData}
-          selectedRuns={selectedRuns}
-        />
-        <EnergyPricePerWorkloadChart
-          data={energyPricePerWorkloadData}
-          selectedRuns={selectedRuns}
-        />
-      </div>
+      <CombinedEnergyWorkloadChart
+        data={energyWorkloadData}
+        selectedRuns={selectedRuns}
+      />
       <ServerFarmCpuComparisonChart
         data={serverFarmCpuData}
         selectedRuns={selectedRuns}

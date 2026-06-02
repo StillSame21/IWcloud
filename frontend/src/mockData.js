@@ -8,9 +8,9 @@ export const backendStatus = {
 export const activePreset = 'Normal'
 
 export const savedModels = [
-  { id: 'maddpg-normal-v1', name: 'MADDPG Normal v1' },
-  { id: 'maddpg-balanced-v2', name: 'MADDPG Balanced v2' },
-  { id: 'maddpg-energy-saver', name: 'MADDPG Energy Saver' },
+  { id: 'maddpg-normal-v1', name: 'Model 1' },
+  { id: 'maddpg-balanced-v2', name: 'Model 2' },
+  { id: 'maddpg-energy-saver', name: 'Model 3' },
 ]
 
 export const defaultSimulationParams = {
@@ -238,7 +238,6 @@ export const dashboardTelemetry = {
     },
     averageEnergyUsage: {
       value: 42.8,
-      unit: 'kWh',
       helper: '300 jobs, 10 farms',
     },
   },
@@ -279,18 +278,18 @@ export const dashboardTelemetry = {
     wallTimeRatio: 0.96,
   },
   serverFarmUtilization: {
-    optimalRate: 70,
+    optimalRate: 0.7,
     farms: [
-      [44, 52, 60, 38, 70, 43, 57, 62, 40, 54],
-      [74, 69, 82, 78, 66, 74, 70, 86, 71, 63],
-      [32, 40, 37, 43, 35, 39, 34, 41, 38, 36],
-      [89, 92, 80, 84, 87, 91, 85, 88, 93, 81],
-      [57, 61, 54, 66, 59, 56, 63, 58, 65, 60],
-      [72, 75, 68, 77, 71, 69, 74, 67, 73, 76],
-      [21, 28, 24, 31, 27, 20, 22, 26, 25, 29],
-      [66, 62, 69, 64, 67, 71, 63, 68, 65, 70],
-      [47, 50, 45, 52, 48, 49, 46, 53, 51, 44],
-      [84, 88, 81, 86, 89, 83, 87, 85, 90, 82],
+      [0.44, 0.52, 0.6, 0.38, 0.7, 0.43, 0.57, 0.62, 0.4, 0.54],
+      [0.74, 0.69, 0.82, 0.78, 0.66, 0.74, 0.7, 0.86, 0.71, 0.63],
+      [0.32, 0.4, 0.37, 0.43, 0.35, 0.39, 0.34, 0.41, 0.38, 0.36],
+      [0.89, 0.92, 0.8, 0.84, 0.87, 0.91, 0.85, 0.88, 0.93, 0.81],
+      [0.57, 0.61, 0.54, 0.66, 0.59, 0.56, 0.63, 0.58, 0.65, 0.6],
+      [0.72, 0.75, 0.68, 0.77, 0.71, 0.69, 0.74, 0.67, 0.73, 0.76],
+      [0.21, 0.28, 0.24, 0.31, 0.27, 0.2, 0.22, 0.26, 0.25, 0.29],
+      [0.66, 0.62, 0.69, 0.64, 0.67, 0.71, 0.63, 0.68, 0.65, 0.7],
+      [0.47, 0.5, 0.45, 0.52, 0.48, 0.49, 0.46, 0.53, 0.51, 0.44],
+      [0.84, 0.88, 0.81, 0.86, 0.89, 0.83, 0.87, 0.85, 0.9, 0.82],
     ],
   },
   diagnostics: [
@@ -399,13 +398,13 @@ const generateWallTimeByJobLoad = ({
   }))
 
 const generateServerFarmAverageCpu = ({
-  cpuBase = 62,
+  cpuBase = 0.62,
   farmCount = defaultSimulationParams.numberOfServerFarms,
-  spread = 9,
+  spread = 0.09,
 }) =>
   Array.from({ length: farmCount }, (_, index) => ({
     farm: `Farm ${index + 1}`,
-    averageCpu: round(cpuBase + Math.sin((index + 1) * 1.4) * spread, 1),
+    averageCpu: round(cpuBase + Math.sin((index + 1) * 1.4) * spread, 2),
   }))
 
 const buildTrainingResults = ({
@@ -491,6 +490,7 @@ const summarizeMetrics = (metrics) => {
 }
 
 const buildRun = ({
+  displayName,
   id,
   type,
   dateTime,
@@ -500,6 +500,7 @@ const buildRun = ({
   trainingResults,
 }) => ({
   id,
+  ...(displayName ? { displayName } : {}),
   type,
   dateTime,
   parameters,
@@ -528,7 +529,7 @@ export const trainingModelExamples = [
       rejectedEvery: 16,
     }),
     trainingResults: buildTrainingResults({
-      cpuBase: 68,
+      cpuBase: 0.68,
       energyFactor: 0.112,
       farmCount: 5,
       lossScale: 1,
@@ -555,7 +556,7 @@ export const trainingModelExamples = [
       rejectedEvery: 22,
     }),
     trainingResults: buildTrainingResults({
-      cpuBase: 57,
+      cpuBase: 0.57,
       energyFactor: 0.094,
       farmCount: 2,
       lossScale: 0.86,
@@ -568,6 +569,7 @@ export const trainingModelExamples = [
 export const evaluationComparisonExamples = [
   buildRun({
     id: 'RUN-2401',
+    displayName: 'Random Evaluation-1',
     type: 'Evaluation Random Algorithm',
     dateTime: '2026-05-25 09:30',
     parameters: {
@@ -583,7 +585,7 @@ export const evaluationComparisonExamples = [
       rejectedEvery: 18,
     }),
     evaluationResults: buildEvaluationResults({
-      cpuBase: 61,
+      cpuBase: 0.61,
       energyFactor: 0.126,
       farmCount: 2,
       wallTimeBase: 0.26,
@@ -592,6 +594,7 @@ export const evaluationComparisonExamples = [
   }),
   buildRun({
     id: 'RUN-2403',
+    displayName: 'MADDPG Evaluation-1',
     type: 'Evaluated Trained Model',
     dateTime: '2026-05-27 11:45',
     parameters: {
@@ -608,7 +611,7 @@ export const evaluationComparisonExamples = [
       rejectedEvery: 25,
     }),
     evaluationResults: buildEvaluationResults({
-      cpuBase: 54,
+      cpuBase: 0.54,
       energyFactor: 0.087,
       farmCount: 10,
       wallTimeBase: 0.18,

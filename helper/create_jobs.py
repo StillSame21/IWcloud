@@ -13,9 +13,20 @@ def generate_arrival_times(total_dags, lambda_):
 """
 Create user specified number of jobs (workflows)
 """
-def initialize_user_requests_queue(total_jobs, seed=None):
+def initialize_user_requests_queue(
+  total_jobs,
+  seed=None,
+  total_tasks=None,
+  lambda_=0.5,
+  runtime_mu=5,
+  runtime_variance=1.6,
+  request_cpu_range=None,
+  request_ram_range=None,
+  show_progress=True,
+):
   if seed != None:
     np.random.seed(seed)
+  rng = np.random.default_rng(seed)
   
   base_dir = os.path.dirname(__file__)
   
@@ -25,16 +36,23 @@ def initialize_user_requests_queue(total_jobs, seed=None):
   if not os.path.isfile(jobs_file_path):
     raise FileNotFoundError(f"File not found: {jobs_file_path}")
   
-  dags = create_dags(jobs_file_path, total_jobs, seed)
+  dags = create_dags(
+    jobs_file_path,
+    total_jobs,
+    seed,
+    total_tasks=total_tasks,
+    request_cpu_range=request_cpu_range,
+    request_ram_range=request_ram_range,
+    show_progress=show_progress,
+  )
   
   # parameters: lambda is job arrival rate,
   # mu and sigma is for normal distribution on modelling task service time.
   # to visualize the normal distribution graph,
   # user can go to learning_codes -> statistics -> run normal_distribution_test.py
   total_dags = len(dags)
-  lambda_ = 0.5 # can be set by user.
-  mu = 5
-  sigma = np.sqrt(1.6)
+  mu = runtime_mu
+  sigma = np.sqrt(runtime_variance)
   
   # generate jobs arrival times using poisson process
   jobs_arrival_times = generate_arrival_times(total_dags, lambda_)
@@ -52,7 +70,7 @@ def initialize_user_requests_queue(total_jobs, seed=None):
       ram = next(iter(cpu_mem_attr))[1]
       status = 3
       # set execution time of task using normal distribution
-      vm_runtime = round(np.random.default_rng().normal(mu, sigma), 2)
+      vm_runtime = round(max(0.01, rng.normal(mu, sigma)), 2)
       #print(f"Task {id}, run time: {vm_runtime}")
       a_task = task.Task(id, idx, cpu, ram, status, vm_runtime)
 

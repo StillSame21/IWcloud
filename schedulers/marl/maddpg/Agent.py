@@ -4,20 +4,40 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
-from torch.optim import Adam
+from torch.optim import Adam, RMSprop, SGD
+
+
+def get_optimizer_class(optimizer_name):
+    optimizers = {
+        'adam': Adam,
+        'sgd': SGD,
+        'rmsprop': RMSprop,
+    }
+    return optimizers.get(str(optimizer_name).lower(), Adam)
 
 
 class Agent:
     """Agent that can interact with environment from pettingzoo"""
 
-    def __init__(self, obs_dim, act_dim, global_obs_dim, actor_lr, critic_lr, device):
+    def __init__(
+        self,
+        obs_dim,
+        act_dim,
+        global_obs_dim,
+        actor_lr,
+        critic_lr,
+        device,
+        hidden_dims=(64, 64),
+        optimizer_name='Adam',
+    ):
 
         # critic input all the observations and actions
         # if there are 3 agents for example, the input for critic is (obs1, obs2, obs3, act1, act2, act3)
-        self.actor = MLPNetwork(obs_dim, act_dim).to(device)
-        self.critic = MLPNetwork(global_obs_dim, 1).to(device)
-        self.actor_optimizer = Adam(self.actor.parameters(), lr=actor_lr)
-        self.critic_optimizer = Adam(self.critic.parameters(), lr=critic_lr)
+        optimizer_class = get_optimizer_class(optimizer_name)
+        self.actor = MLPNetwork(obs_dim, act_dim, hidden_dims=hidden_dims).to(device)
+        self.critic = MLPNetwork(global_obs_dim, 1, hidden_dims=hidden_dims).to(device)
+        self.actor_optimizer = optimizer_class(self.actor.parameters(), lr=actor_lr)
+        self.critic_optimizer = optimizer_class(self.critic.parameters(), lr=critic_lr)
         self.target_actor = deepcopy(self.actor)
         self.target_critic = deepcopy(self.critic)
 
@@ -74,16 +94,18 @@ class Agent:
 
 
 class MLPNetwork(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=64, non_linear=nn.ReLU()):
+    def __init__(self, in_dim, out_dim, hidden_dims=(64, 64), non_linear=nn.ReLU()):
         super(MLPNetwork, self).__init__()
 
-        self.net = nn.Sequential(
-            nn.Linear(in_dim, hidden_dim),
-            non_linear,
-            nn.Linear(hidden_dim, hidden_dim),
-            non_linear,
-            nn.Linear(hidden_dim, out_dim),
-        ).apply(self.init)
+        layers = []
+        previous_dim = in_dim
+        for hidden_dim in hidden_dims:
+            layers.append(nn.Linear(previous_dim, hidden_dim))
+            layers.append(non_linear)
+            previous_dim = hidden_dim
+        layers.append(nn.Linear(previous_dim, out_dim))
+
+        self.net = nn.Sequential(*layers).apply(self.init)
 
     @staticmethod
     def init(m):

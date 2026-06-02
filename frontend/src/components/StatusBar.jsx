@@ -10,6 +10,38 @@ function getRunStatusCopy(runStatus) {
     }
   }
 
+  if (runStatus === 'starting') {
+    return {
+      badge: 'Starting',
+      heading: 'Starting',
+      text: 'Backend accepted the run and the live stream is opening.',
+    }
+  }
+
+  if (runStatus === 'stopping') {
+    return {
+      badge: 'Stopping',
+      heading: 'Stopping',
+      text: 'Stop request sent to the backend.',
+    }
+  }
+
+  if (runStatus === 'completed') {
+    return {
+      badge: 'Done',
+      heading: 'Completed',
+      text: 'Run completed and metrics were saved.',
+    }
+  }
+
+  if (runStatus === 'error') {
+    return {
+      badge: 'Error',
+      heading: 'Error',
+      text: 'Run failed. Check the dashboard message.',
+    }
+  }
+
   if (runStatus === 'stopped') {
     return {
       badge: 'Idle',
@@ -50,6 +82,7 @@ export default function StatusBar() {
     activePreset,
     backendInfo,
     lastHealthCheck,
+    runError,
     runStatus,
   } = useAppState()
 
@@ -78,7 +111,9 @@ export default function StatusBar() {
           <StatusHeading badgeLabel={runStatusCopy.badge}>
             {runStatusCopy.heading}
           </StatusHeading>
-          <p className="text-sm text-slate-500">{runStatusCopy.text}</p>
+          <p className="text-sm text-slate-500">
+            {runError ?? runStatusCopy.text}
+          </p>
         </StatusCard>
 
         <StatusCard label="Active Preset">

@@ -13,10 +13,11 @@ import {
 } from 'recharts'
 import StatusBadge from './StatusBadge'
 import { useAppState } from '../context/useAppState'
+import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
 const maxSelectedRuns = 2
 const trainingRunType = 'Training'
-const chartColors = ['#0ea5e9', '#10b981']
+const chartColors = ['#2563eb', '#d97706']
 const chartGridStroke = '#e2e8f0'
 const axisStroke = '#94a3b8'
 const axisTick = { fill: '#64748b', fontSize: 12 }
@@ -434,28 +435,39 @@ function buildAverageEnergyComparisonData(selectedRuns) {
 }
 
 function RewardComparisonChart({ data, selectedRuns }) {
+  const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
+    includeZero: true,
+  })
+
   return (
     <ChartCard
       title="Rewards Per Episode"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 48 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
             dataKey="episode"
+            height={58}
             label={{
               value: 'Episode',
               position: 'insideBottom',
-              offset: -8,
+              offset: -4,
               fill: '#64748b',
             }}
             stroke={axisStroke}
             tick={axisTick}
           />
-          <YAxis stroke={axisStroke} tick={axisTick} width={64} />
+          <YAxis
+            domain={yDomain}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={72}
+          />
           <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
           {selectedRuns.map((run, index) => (
             <Line
               key={run.id}
@@ -475,20 +487,28 @@ function RewardComparisonChart({ data, selectedRuns }) {
 }
 
 function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
+  const energyKeys = selectedRuns.map((run) => `${run.id}-energy`)
+  const wallTimeKeys = selectedRuns.map((run) => `${run.id}-wallTime`)
+  const energyDomain = getAdaptiveDomain(data, energyKeys, { zeroMin: true })
+  const wallTimeDomain = getAdaptiveDomain(data, wallTimeKeys, {
+    zeroMin: true,
+  })
+
   return (
     <ChartCard
       title="Energy and Wall Time Per Episode"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 28, bottom: 18 }}>
+        <LineChart data={data} margin={{ top: 12, right: 44, bottom: 48 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
             dataKey="episode"
+            height={58}
             label={{
               value: 'Episode',
               position: 'insideBottom',
-              offset: -8,
+              offset: -4,
               fill: '#64748b',
             }}
             stroke={axisStroke}
@@ -496,6 +516,7 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
           />
           <YAxis
             yAxisId="energy"
+            domain={energyDomain}
             label={{
               value: 'Energy',
               angle: -90,
@@ -504,11 +525,13 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
             width={72}
           />
           <YAxis
             yAxisId="wallTime"
             orientation="right"
+            domain={wallTimeDomain}
             label={{
               value: 'Wall Time',
               angle: 90,
@@ -517,10 +540,11 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
             width={72}
           />
           <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
           {selectedRuns.map((run, index) => (
             <Line
               key={`${run.id}-energy`}
@@ -555,23 +579,34 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
 }
 
 function ActorCriticLossChart({ run }) {
+  const yDomain = getAdaptiveDomain(run.trainingResults.lossSeries, [
+    'actorLoss',
+    'criticLoss',
+  ], { zeroMin: true })
+
   return (
     <ChartCard title={`${run.id} Actor and Critic Loss`}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={run.trainingResults.lossSeries}
-          margin={{ top: 12, right: 24, bottom: 18 }}
+          margin={{ top: 12, right: 24, bottom: 24 }}
         >
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
-          <YAxis stroke={axisStroke} tick={axisTick} width={56} />
+          <YAxis
+            domain={yDomain}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={64}
+          />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
           <Line
             type="monotone"
             dataKey="actorLoss"
             name="Actor loss"
-            stroke="#10b981"
+            stroke="#2563eb"
             strokeWidth={2.5}
             dot={false}
             isAnimationActive={false}
@@ -580,7 +615,7 @@ function ActorCriticLossChart({ run }) {
             type="monotone"
             dataKey="criticLoss"
             name="Critic loss"
-            stroke="#0ea5e9"
+            stroke="#d97706"
             strokeDasharray="6 5"
             strokeWidth={2.5}
             dot={false}
@@ -593,26 +628,34 @@ function ActorCriticLossChart({ run }) {
 }
 
 function QValueReplayBufferChart({ run }) {
+  const qValueDomain = getAdaptiveDomain(
+    run.trainingResults.replaySeries,
+    'qValue',
+    { includeZero: true },
+  )
+
   return (
     <ChartCard title={`${run.id} Q-Value and Replay Buffer`}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={run.trainingResults.replaySeries}
-          margin={{ top: 12, right: 24, bottom: 18 }}
+          margin={{ top: 12, right: 40, bottom: 24 }}
         >
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
           <YAxis
             yAxisId="qValue"
-            stroke="#f97316"
+            domain={qValueDomain}
+            stroke="#d97706"
             tick={axisTick}
-            width={56}
+            tickFormatter={formatAdaptiveTick}
+            width={64}
           />
           <YAxis
             yAxisId="buffer"
             orientation="right"
             domain={[0, 100]}
-            stroke="#0ea5e9"
+            stroke="#2563eb"
             tick={axisTick}
             width={56}
           />
@@ -623,7 +666,7 @@ function QValueReplayBufferChart({ run }) {
             type="monotone"
             dataKey="qValue"
             name="Q-value"
-            stroke="#f97316"
+            stroke="#d97706"
             strokeWidth={2.5}
             dot={false}
             isAnimationActive={false}
@@ -633,7 +676,7 @@ function QValueReplayBufferChart({ run }) {
             type="monotone"
             dataKey="bufferFill"
             name="Replay buffer %"
-            stroke="#0ea5e9"
+            stroke="#2563eb"
             strokeDasharray="6 5"
             strokeWidth={2.5}
             dot={false}
@@ -646,16 +689,26 @@ function QValueReplayBufferChart({ run }) {
 }
 
 function AverageEnergyByJobLoadChart({ data, selectedRuns }) {
+  const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
+    zeroMin: true,
+  })
+
   return (
     <ChartCard
       title="Average Energy Usage Per Job Load"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+        <BarChart data={data} margin={{ top: 12, right: 24, bottom: 32 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="workload" stroke={axisStroke} tick={axisTick} />
-          <YAxis stroke={axisStroke} tick={axisTick} width={64} />
+          <YAxis
+            domain={yDomain}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={64}
+          />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
           {selectedRuns.map((run, index) => (
@@ -676,7 +729,7 @@ function AverageEnergyByJobLoadChart({ data, selectedRuns }) {
 
 function ServerFarmAverageCpuChart({ run }) {
   return (
-    <ChartCard title={`${run.id} Server Farm Average CPU Utilisation`}>
+    <ChartCard title={`${run.id} Server Farm Average CPU Utilisation Rate`}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={run.trainingResults.serverFarmAverageCpu}
@@ -685,9 +738,9 @@ function ServerFarmAverageCpuChart({ run }) {
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="farm" stroke={axisStroke} tick={axisTick} />
           <YAxis
-            domain={[0, 100]}
+            domain={[0, 1]}
             label={{
-              value: 'CPU %',
+              value: 'CPU Utilization Rate',
               angle: -90,
               position: 'insideLeft',
               fill: '#64748b',
@@ -696,11 +749,14 @@ function ServerFarmAverageCpuChart({ run }) {
             tick={axisTick}
             width={64}
           />
-          <Tooltip contentStyle={tooltipStyle} />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value) => formatNumber(value, 2)}
+          />
           <Legend />
           <Bar
             dataKey="averageCpu"
-            name="Average CPU %"
+            name="Average CPU Utilization"
             fill="#10b981"
             radius={[6, 6, 0, 0]}
             isAnimationActive={false}

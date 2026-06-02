@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useAppState } from '../context/useAppState'
+import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
 const cardClass = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
 const chartCardClass = `${cardClass} min-h-[420px]`
@@ -38,15 +39,17 @@ const phaseToneClasses = {
   info: 'bg-slate-300 text-slate-700',
 }
 
-const diagnosticToneClasses = {
-  warning: 'border-l-amber-400 bg-amber-50 text-amber-900',
-  success: 'border-l-emerald-500 bg-emerald-50 text-emerald-800',
-}
-
 function formatNumber(value, maximumFractionDigits = 1) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits,
   }).format(value)
+}
+
+function formatUtilizationRate(value) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value ?? 0)
 }
 
 function getMetricStep(point, index) {
@@ -63,19 +66,6 @@ function getMetricEnergyUsage(point) {
 
 function getMetricWallTime(point) {
   return point?.wallTime ?? point?.stepTime ?? 0
-}
-
-function getAverage(values) {
-  const numericValues = values.filter(Number.isFinite)
-
-  if (numericValues.length === 0) {
-    return 0
-  }
-
-  return (
-    numericValues.reduce((total, value) => total + value, 0) /
-    numericValues.length
-  )
 }
 
 function getSelectedModelName(savedModels, selectedModel) {
@@ -128,7 +118,7 @@ function buildEvaluationKpiCards({
   const acceptedJobs = Math.max(totalJobs - rejectedJobs, 0)
   const acceptanceRate =
     totalJobs > 0 ? (acceptedJobs / totalJobs) * 100 : 0
-  const averageWallTime = getAverage(liveMetrics.map(getMetricWallTime))
+  const wallTime = getMetricWallTime(lastMetric)
   const selectedModelName = getSelectedModelName(savedModels, selectedModel)
   const episodeHelper =
     selectedRunType === 'inference' && selectedModelName
@@ -154,10 +144,9 @@ function buildEvaluationKpiCards({
       tone: 'emerald',
     },
     {
-      id: 'average-wall-time',
-      label: 'Average Wall Time',
-      value: `${formatNumber(averageWallTime, 3)}s`,
-      helper: `${formatNumber(liveMetrics.length, 0)} time steps sampled`,
+      id: 'wall-time',
+      label: 'Wall Time',
+      value: `${formatNumber(wallTime, 3)}s`,
       tone: 'sky',
     },
   ]
@@ -184,19 +173,19 @@ function getTimelineMarkers(timeline) {
 }
 
 function getUtilizationClass(value) {
-  if (value < 45) {
+  if (value < 0.45) {
     return 'bg-emerald-100 text-emerald-800'
   }
 
-  if (value < 65) {
+  if (value < 0.65) {
     return 'bg-teal-500 text-white'
   }
 
-  if (value < 75) {
+  if (value < 0.75) {
     return 'bg-amber-300 text-slate-950'
   }
 
-  if (value < 85) {
+  if (value < 0.85) {
     return 'bg-orange-400 text-white'
   }
 
@@ -240,7 +229,9 @@ function KpiGrid({ cards }) {
           <p className="mt-2 text-2xl font-semibold text-slate-950">
             {card.value}
           </p>
-          <p className="mt-1 text-sm text-slate-500">{card.helper}</p>
+          {card.helper ? (
+            <p className="mt-1 text-sm text-slate-500">{card.helper}</p>
+          ) : null}
         </section>
       ))}
     </div>
@@ -290,13 +281,25 @@ function TrainingPhaseTimeline({ timeline }) {
 }
 
 function AgentRewardChart({ data }) {
+  const yDomain = getAdaptiveDomain(data, [
+    'farmReward',
+    'serverReward',
+    'smoothedFarmReward',
+  ], { includeZero: true })
+
   return (
     <ChartCard title="Agent Reward Per Episode">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 24, left: 10 }}>
+        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18, left: 10 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
-          <YAxis stroke={axisStroke} tick={axisTick} width={62} />
+          <YAxis
+            domain={yDomain}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={72}
+          />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
           <ReferenceArea
@@ -342,13 +345,26 @@ function AgentRewardChart({ data }) {
 }
 
 function ActorCriticLossChart({ data }) {
+  const yDomain = getAdaptiveDomain(data, [
+    'farmActor',
+    'farmCritic',
+    'serverActor',
+    'serverCritic',
+  ], { zeroMin: true })
+
   return (
     <ChartCard title="Actor and Critic Loss">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
+        <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18, left: 0 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
-          <YAxis stroke={axisStroke} tick={axisTick} width={42} />
+          <YAxis
+            domain={yDomain}
+            stroke={axisStroke}
+            tick={axisTick}
+            tickFormatter={formatAdaptiveTick}
+            width={64}
+          />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
           <Line
@@ -396,25 +412,31 @@ function ActorCriticLossChart({ data }) {
 }
 
 function ReplayBufferChart({ data }) {
+  const qValueDomain = getAdaptiveDomain(data, 'qValue', {
+    includeZero: true,
+  })
+
   return (
     <ChartCard title="Q-Value and Replay Buffer">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 24, left: 0 }}>
+        <LineChart data={data} margin={{ top: 12, right: 40, bottom: 18, left: 0 }}>
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis dataKey="episode" stroke={axisStroke} tick={axisTick} />
           <YAxis
             yAxisId="qValue"
+            domain={qValueDomain}
             stroke="#f97316"
             tick={axisTick}
-            width={42}
+            tickFormatter={formatAdaptiveTick}
+            width={64}
           />
           <YAxis
             yAxisId="buffer"
             orientation="right"
             domain={[0, 100]}
-            stroke="#0ea5e9"
+            stroke="#2563eb"
             tick={axisTick}
-            width={42}
+            width={56}
           />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
@@ -423,7 +445,7 @@ function ReplayBufferChart({ data }) {
             type="monotone"
             dataKey="qValue"
             name="Q-value mean"
-            stroke="#f97316"
+            stroke="#d97706"
             strokeWidth={2.5}
             dot={false}
             isAnimationActive={false}
@@ -433,7 +455,7 @@ function ReplayBufferChart({ data }) {
             type="monotone"
             dataKey="bufferFill"
             name="Buffer fill %"
-            stroke="#0ea5e9"
+            stroke="#2563eb"
             strokeDasharray="6 4"
             strokeWidth={2}
             dot={false}
@@ -446,43 +468,48 @@ function ReplayBufferChart({ data }) {
 }
 
 function EnergyUsagePerTimeStepChart({ data }) {
+  const yDomain = getAdaptiveDomain(data, 'energyUsage', { zeroMin: true })
+
   return (
     <ChartCard title="Energy Usage Per Time Step">
       {data.length === 0 ? (
         <EmptyChartState>No energy telemetry yet</EmptyChartState>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 12, right: 24, bottom: 18 }}>
+          <LineChart data={data} margin={{ top: 12, right: 24, bottom: 48 }}>
             <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
             <XAxis
               dataKey="timeStep"
+              height={58}
               label={{
                 value: 'Time Step',
                 position: 'insideBottom',
-                offset: -8,
+                offset: -4,
                 fill: '#64748b',
               }}
               stroke={axisStroke}
               tick={axisTick}
             />
             <YAxis
+              domain={yDomain}
               label={{
-                value: 'Energy Usage (kWh)',
+                value: 'Energy Usage',
                 angle: -90,
                 position: 'insideLeft',
                 fill: '#64748b',
               }}
               stroke={axisStroke}
               tick={axisTick}
+              tickFormatter={formatAdaptiveTick}
               width={72}
             />
             <Tooltip contentStyle={tooltipStyle} />
-            <Legend />
+            <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
             <Line
               type="monotone"
               dataKey="energyUsage"
               name="Energy usage"
-              stroke="#0ea5e9"
+              stroke="#2563eb"
               strokeWidth={3}
               dot={false}
               isAnimationActive={false}
@@ -496,71 +523,68 @@ function EnergyUsagePerTimeStepChart({ data }) {
 
 function ServerFarmHeatmap({
   data,
-  title = 'Server Farm CPU Utilisation Snapshot - 10 Farms x 10 Servers',
+  title = 'Server Farm CPU Utilisation Snapshot',
 }) {
+  const farms = data?.farms ?? []
+  const maxServerCount = Math.max(
+    1,
+    ...farms.map((servers) => servers.length),
+  )
+
   return (
     <section className={cardClass}>
       <SectionTitle title={title} />
       <div className="mt-4 overflow-x-auto">
-        <div className="min-w-[680px] space-y-2">
-          {data.farms.map((servers, farmIndex) => (
-            <div
-              key={`farm-${farmIndex + 1}`}
-              className="grid items-center gap-1"
-              style={{
-                gridTemplateColumns: '2.75rem repeat(10, minmax(2.25rem, 1fr))',
-              }}
-            >
-              <span className="text-xs font-medium text-slate-500">
-                F{farmIndex + 1}
-              </span>
-              {servers.map((value, serverIndex) => (
-                <span
-                  key={`${farmIndex}-${serverIndex}`}
-                  className={`rounded-md px-2 py-1.5 text-center text-xs font-semibold ${getUtilizationClass(
-                    value,
-                  )}`}
-                  title={`Farm ${farmIndex + 1}, server ${
-                    serverIndex + 1
-                  }: ${value}% CPU util`}
-                >
-                  {value}
+        {farms.length === 0 ? (
+          <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-slate-300 text-sm font-medium text-slate-500">
+            CPU heatmap will appear after the episode completes.
+          </div>
+        ) : (
+          <div className="min-w-[680px] space-y-2">
+            {farms.map((servers, farmIndex) => (
+              <div
+                key={`farm-${farmIndex + 1}`}
+                className="grid items-center gap-1"
+                style={{
+                  gridTemplateColumns: `2.75rem repeat(${maxServerCount}, minmax(3rem, 1fr))`,
+                }}
+              >
+                <span className="text-xs font-medium text-slate-500">
+                  F{farmIndex + 1}
                 </span>
-              ))}
-            </div>
+                {servers.map((value, serverIndex) => (
+                  <span
+                    key={`${farmIndex}-${serverIndex}`}
+                    className={`rounded-md px-2 py-1.5 text-center text-xs font-semibold ${getUtilizationClass(
+                      value,
+                    )}`}
+                    title={`Farm ${farmIndex + 1}, server ${
+                      serverIndex + 1
+                    }: ${formatUtilizationRate(value)} CPU utilization rate`}
+                  >
+                    {formatUtilizationRate(value)}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {farms.length > 0 ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span>Low</span>
+          {[0.28, 0.56, 0.7, 0.8, 0.9].map((value) => (
+            <span
+              key={value}
+              className={`h-3 w-6 rounded-full ${getUtilizationClass(value)}`}
+            />
           ))}
+          <span>
+            High - above optimal {formatUtilizationRate(data.optimalRate)}
+          </span>
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <span>Low</span>
-        {[28, 56, 70, 80, 90].map((value) => (
-          <span
-            key={value}
-            className={`h-3 w-6 rounded-full ${getUtilizationClass(value)}`}
-          />
-        ))}
-        <span>High - above optimal {data.optimalRate}%</span>
-      </div>
-    </section>
-  )
-}
-
-function DiagnosticsPanel({ diagnostics }) {
-  return (
-    <section className="space-y-3">
-      <SectionTitle title="Signals and Diagnostics" />
-      {diagnostics.map((item) => (
-        <article
-          key={item.id}
-          className={`rounded-lg border border-slate-200 border-l-4 p-4 ${
-            diagnosticToneClasses[item.tone]
-          }`}
-        >
-          <h3 className="text-sm font-semibold">{item.title}</h3>
-          <p className="mt-1 text-sm leading-6">{item.message}</p>
-        </article>
-      ))}
+      ) : null}
     </section>
   )
 }
@@ -616,7 +640,6 @@ function TrainingVisualizations({ dashboardTelemetry }) {
       </div>
 
       <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
-      <DiagnosticsPanel diagnostics={dashboardTelemetry.diagnostics} />
     </section>
   )
 }

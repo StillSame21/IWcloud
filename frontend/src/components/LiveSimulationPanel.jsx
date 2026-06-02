@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useAppState } from '../context/useAppState'
+import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
 function getMetricEpisode(point, index) {
   return point?.episode ?? index + 1
@@ -54,21 +55,27 @@ function LiveMetricsChart({ metrics }) {
   }
 
   const episodeEnergyData = buildEpisodeEnergyData(metrics)
+  const energyDomain = getAdaptiveDomain(episodeEnergyData, 'totalEnergyCost', {
+    zeroMin: true,
+  })
+  const wallTimeDomain = getAdaptiveDomain(episodeEnergyData, 'wallTime', {
+    zeroMin: true,
+  })
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={episodeEnergyData}
-        margin={{ top: 10, right: 36, bottom: 8 }}
+        margin={{ top: 10, right: 44, bottom: 42 }}
       >
         <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
         <XAxis
           dataKey="episode"
-          height={48}
+          height={56}
           label={{
             value: 'Episode',
             position: 'insideBottom',
-            offset: 2,
+            offset: -2,
             fill: '#64748b',
           }}
           stroke="#94a3b8"
@@ -76,6 +83,7 @@ function LiveMetricsChart({ metrics }) {
         />
         <YAxis
           yAxisId="energy"
+          domain={energyDomain}
           label={{
             value: 'Total Energy Cost',
             angle: -90,
@@ -84,11 +92,13 @@ function LiveMetricsChart({ metrics }) {
           }}
           stroke="#94a3b8"
           tick={{ fill: '#64748b', fontSize: 12 }}
+          tickFormatter={formatAdaptiveTick}
           width={72}
         />
         <YAxis
           yAxisId="wallTime"
           orientation="right"
+          domain={wallTimeDomain}
           label={{
             value: 'Wall Time',
             angle: 90,
@@ -97,6 +107,7 @@ function LiveMetricsChart({ metrics }) {
           }}
           stroke="#94a3b8"
           tick={{ fill: '#64748b', fontSize: 12 }}
+          tickFormatter={formatAdaptiveTick}
           width={72}
         />
         <Tooltip
@@ -108,13 +119,13 @@ function LiveMetricsChart({ metrics }) {
           }}
           labelStyle={{ color: '#94a3b8' }}
         />
-        <Legend />
+        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
         <Line
           yAxisId="energy"
           type="monotone"
           dataKey="totalEnergyCost"
           name="Total Energy Cost"
-          stroke="#0ea5e9"
+          stroke="#2563eb"
           strokeWidth={3}
           dot={false}
           isAnimationActive={false}
@@ -124,7 +135,7 @@ function LiveMetricsChart({ metrics }) {
           type="monotone"
           dataKey="wallTime"
           name="Wall Time"
-          stroke="#22c55e"
+          stroke="#d97706"
           strokeWidth={3}
           dot={false}
           isAnimationActive={false}

@@ -78,6 +78,84 @@ def generate_random_dag_chunk(chunk):
   
   return graphs
 
+def distribute_task_counts(total_jobs, total_tasks):
+  total_jobs = max(1, int(total_jobs))
+  total_tasks = max(total_jobs, int(total_tasks))
+  base_count = total_tasks // total_jobs
+  remainder = total_tasks % total_jobs
+
+  return [
+    base_count + (1 if index < remainder else 0)
+    for index in range(total_jobs)
+  ]
+
+def normalize_resource_range(resource_range):
+  if not isinstance(resource_range, (list, tuple)) or len(resource_range) != 2:
+    return None
+
+  low = max(0, float(resource_range[0]))
+  high = max(0, float(resource_range[1]))
+
+  if high < low:
+    low, high = high, low
+
+  return min(low, 1), min(high, 1)
+
+def apply_resource_range(value, resource_range):
+  normalized_range = normalize_resource_range(resource_range)
+
+  if normalized_range is None:
+    return float(value)
+
+  low, high = normalized_range
+  normalized_value = min(max(float(value), 0), 1)
+  return round(low + normalized_value * (high - low), 5)
+
+def create_exact_task_graphs(
+  file_path,
+  total_jobs,
+  total_tasks,
+  seed=None,
+  request_cpu_range=None,
+  request_ram_range=None,
+):
+  rng = random.Random(seed)
+  task_counts = distribute_task_counts(total_jobs, total_tasks)
+  total_sampled_tasks = sum(task_counts)
+  dataframe = pd.read_csv(
+    file_path,
+    usecols=['Resource Request CPU', 'Resource Request RAM'],
+    nrows=max(total_sampled_tasks, 1000),
+  )
+
+  if dataframe.empty:
+    raw_resources = [(0.1, 0.1)] * total_sampled_tasks
+  else:
+    raw_resources = []
+    for _index in range(total_sampled_tasks):
+      row = dataframe.iloc[rng.randrange(len(dataframe))]
+      raw_resources.append((
+        row['Resource Request CPU'],
+        row['Resource Request RAM'],
+      ))
+
+  resources = [
+    (
+      apply_resource_range(cpu, request_cpu_range),
+      apply_resource_range(ram, request_ram_range),
+    )
+    for cpu, ram in raw_resources
+  ]
+
+  graphs = []
+  cursor = 0
+  for task_count in task_counts:
+    graph_resources = resources[cursor:cursor + task_count]
+    graphs.append(generate_graph((task_count, graph_resources), seed))
+    cursor += task_count
+
+  return graphs
+
 def generate_graph(graph_data, seed=None):
   if seed is not None:
     random.seed(seed)
@@ -117,9 +195,30 @@ def generate_graph(graph_data, seed=None):
   del task_resources
   return g
 
-def create_dags(file_path, total_jobs, seed=None):
+def create_dags(
+  file_path,
+  total_jobs,
+  seed=None,
+  total_tasks=None,
+  request_cpu_range=None,
+  request_ram_range=None,
+  show_progress=True,
+):
   if seed is not None:
     random.seed(seed)
+
+  if total_tasks is not None:
+    dags = create_exact_task_graphs(
+      file_path,
+      total_jobs,
+      total_tasks,
+      seed=seed,
+      request_cpu_range=request_cpu_range,
+      request_ram_range=request_ram_range,
+    )
+    if show_progress:
+      print(f"Total number of processed tasks: {sum(dag.vcount() for dag in dags)}")
+    return dags
   
   chunk_size = 500
   if total_jobs < chunk_size:
@@ -137,7 +236,12 @@ def create_dags(file_path, total_jobs, seed=None):
   
   start_time = time.time()  # Start time measurement
   dags = []
-  for chunk in tqdm.tqdm(chunks_to_process, desc='Processing Chunks', total=len(chunks_to_process)):
+  for chunk in tqdm.tqdm(
+    chunks_to_process,
+    desc='Processing Chunks',
+    total=len(chunks_to_process),
+    disable=not show_progress,
+  ):
     graphs = generate_random_dag_chunk(chunk)
     
     for graph_data in graphs:

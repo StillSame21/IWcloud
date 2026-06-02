@@ -8,6 +8,18 @@ function getCheckedAt() {
   })
 }
 
+function getWebSocketBaseUrl() {
+  return apiBaseUrl.replace(/^http/, 'ws')
+}
+
+function getStreamUrl(streamUrl) {
+  if (streamUrl.startsWith('ws://') || streamUrl.startsWith('wss://')) {
+    return streamUrl
+  }
+
+  return `${getWebSocketBaseUrl()}${streamUrl}`
+}
+
 async function requestJson(path, options = {}) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
@@ -18,13 +30,20 @@ async function requestJson(path, options = {}) {
   })
 
   if (!response.ok) {
-    throw new Error(`ecopycsim-api returned ${response.status}`)
+    const detail = await response.json().catch(() => null)
+    const message =
+      detail?.detail?.message ??
+      detail?.message ??
+      `ecopycsim-api returned ${response.status}`
+    const error = new Error(message)
+    error.detail = detail?.detail ?? detail
+    throw error
   }
 
   return response.json()
 }
 
-export const mockApi = {
+export const dashboardApi = {
   checkBackendStatus: async () => {
     try {
       return await requestJson('/api/health')
@@ -37,13 +56,17 @@ export const mockApi = {
       }
     }
   },
+  getConfig: () => requestJson('/api/dashboard/config'),
+  getModels: () => requestJson('/api/models'),
+  getRunHistory: () => requestJson('/api/runs/history'),
   startRun: (payload) =>
     requestJson('/api/runs/start', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  stopRun: () =>
-    requestJson('/api/runs/stop', {
+  stopRun: (runId) =>
+    requestJson(runId ? `/api/runs/${runId}/stop` : '/api/runs/stop', {
       method: 'POST',
     }),
+  openRunStream: (streamUrl) => new WebSocket(getStreamUrl(streamUrl)),
 }

@@ -5,24 +5,6 @@ import {
 } from './ParameterForms'
 import { useAppState } from '../context/useAppState'
 
-const runTypes = [
-  {
-    id: 'random',
-    label: 'Evaluation Random Algorithm',
-    description: 'Evaluate EcoPyCSIM with stochastic scheduling inputs.',
-  },
-  {
-    id: 'training',
-    label: 'Train Model',
-    description: 'Configure MADDPG and simulation parameters together.',
-  },
-  {
-    id: 'inference',
-    label: 'Evaluated Trained Model',
-    description: 'Evaluate a saved policy model for scheduling decisions.',
-  },
-]
-
 const parameterTabs = [
   { id: 'simulation', label: 'Simulation Parameters' },
   { id: 'training', label: 'Training Parameters' },
@@ -102,6 +84,7 @@ function PanelHeader({ layout = 'default' }) {
 
 function SelectCard({
   description,
+  disabled = false,
   getOptionLabel,
   getOptionValue,
   label,
@@ -117,6 +100,7 @@ function SelectCard({
       ) : null}
       <select
         className={selectClass}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -150,6 +134,7 @@ function ControlButton({ children, disabled, icon, onClick, variant }) {
 }
 
 function RunControlsCard({
+  canStartRun,
   checkBackend,
   isChecking,
   resetRun,
@@ -164,9 +149,14 @@ function RunControlsCard({
           icon="▶"
           variant="run"
           onClick={startRun}
-          disabled={runStatus === 'running'}
+          disabled={
+            !canStartRun ||
+            runStatus === 'running' ||
+            runStatus === 'starting' ||
+            runStatus === 'stopping'
+          }
         >
-          Run
+          {runStatus === 'starting' ? 'Starting' : 'Run'}
         </ControlButton>
         <ControlButton
           icon="■"
@@ -193,11 +183,14 @@ function RunControlsCard({
 }
 
 function PrimaryControlsGroup({
+  canStartRun,
   checkBackend,
   isChecking,
+  isRunTypeLocked,
   onRunTypeChange,
   resetRun,
   runStatus,
+  runTypes,
   selectedRunType,
   selectedRunTypeDetails,
   startRun,
@@ -212,6 +205,7 @@ function PrimaryControlsGroup({
         getOptionValue={(runType) => runType.id}
         getOptionLabel={(runType) => runType.label}
         description={selectedRunTypeDetails?.description}
+        disabled={isRunTypeLocked}
         onChange={onRunTypeChange}
         showLabel={false}
       />
@@ -222,6 +216,7 @@ function PrimaryControlsGroup({
       />
 
       <RunControlsCard
+        canStartRun={canStartRun}
         checkBackend={checkBackend}
         isChecking={isChecking}
         resetRun={resetRun}
@@ -271,16 +266,22 @@ export function RunTypePanelContent({ layout = 'default' }) {
   const {
     checkBackend,
     isChecking,
+    lockedSimulationFields,
+    modelLockMessage,
     resetRun,
+    resetVisualizations,
+    runTypes,
     savedModels,
     selectedModel,
     selectedRunType,
     setSelectedModel,
     setSelectedRunType,
     simParams,
+    simulationParameterFields,
     startRun,
     stopRun,
     runStatus,
+    trainingParameterFields,
     trainingParams,
     updateSimParam,
     updateTrainingParam,
@@ -289,9 +290,15 @@ export function RunTypePanelContent({ layout = 'default' }) {
   const selectedRunTypeDetails = runTypes.find(
     (runType) => runType.id === selectedRunType,
   )
+  const isRunTypeLocked = ['starting', 'running', 'stopping'].includes(runStatus)
 
   const handleRunTypeChange = (runType) => {
+    if (isRunTypeLocked || runType === selectedRunType) {
+      return
+    }
+
     setSelectedRunType(runType)
+    resetVisualizations()
     setActiveParameterTab('simulation')
   }
 
@@ -303,6 +310,11 @@ export function RunTypePanelContent({ layout = 'default' }) {
   const bodyClass = panelBodyClasses[layout] ?? panelBodyClasses.default
   const controlsClass =
     controlsLayoutClasses[layout] ?? controlsLayoutClasses.default
+  const canStartRun = selectedRunType !== 'inference' || savedModels.length > 0
+  const modelDescription =
+    savedModels.length === 0
+      ? 'Train a model before evaluating a saved policy.'
+      : modelLockMessage
 
   return (
     <section className={panelClass}>
@@ -311,11 +323,14 @@ export function RunTypePanelContent({ layout = 'default' }) {
       <div className={bodyClass}>
         <div className={controlsClass}>
           <PrimaryControlsGroup
+            canStartRun={canStartRun}
             checkBackend={checkBackend}
             isChecking={isChecking}
+            isRunTypeLocked={isRunTypeLocked}
             onRunTypeChange={handleRunTypeChange}
             resetRun={resetRun}
             runStatus={runStatus}
+            runTypes={runTypes}
             selectedRunType={selectedRunType}
             selectedRunTypeDetails={selectedRunTypeDetails}
             startRun={startRun}
@@ -329,6 +344,8 @@ export function RunTypePanelContent({ layout = 'default' }) {
               options={savedModels}
               getOptionValue={(model) => model.id}
               getOptionLabel={(model) => model.name}
+              description={modelDescription}
+              disabled={savedModels.length === 0}
               onChange={setSelectedModel}
             />
           ) : null}
@@ -343,6 +360,9 @@ export function RunTypePanelContent({ layout = 'default' }) {
 
         {shouldShowSimulationParameters ? (
           <SimulationParameters
+            fields={simulationParameterFields}
+            lockedFields={lockedSimulationFields}
+            lockedMessage={modelLockMessage}
             layout={parameterLayout}
             params={simParams}
             onParamChange={updateSimParam}
@@ -351,6 +371,7 @@ export function RunTypePanelContent({ layout = 'default' }) {
 
         {shouldShowTrainingParameters ? (
           <TrainingParameters
+            fields={trainingParameterFields}
             layout={parameterLayout}
             params={trainingParams}
             onParamChange={updateTrainingParam}

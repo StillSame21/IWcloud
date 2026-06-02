@@ -3,7 +3,13 @@ import matplotlib.pyplot as plt
 import random
 
 # Set vertices and edges attributes
-def add_graph_vertices_and_edges_attributes(g, seed=None):
+def add_graph_vertices_and_edges_attributes(
+  g,
+  seed=None,
+  num_vm_types=10,
+  alpha=None,
+  beta=10,
+):
   if seed is not None:
     random.seed(seed)
   else:
@@ -19,16 +25,15 @@ def add_graph_vertices_and_edges_attributes(g, seed=None):
     vertex['name'] = str(i)  # Assigning sequential names to vertices
   
   # predefined max number of VMs in the server
-  v = 10 # max v type of VMs hosted on server
-  alpha = 0
-  beta = 10 # predefined to 10
+  v = max(1, int(num_vm_types)) # max v type of VMs hosted on server
   cumulative_server_cpu_value = 0
   cumulative_server_mem_value = 0
   
   # Set vertices attributes
   for vertex in new_graph.vs:
     # random alpha values to dictate different pwr consumption curve even with similar load on servers
-    alpha = round(random.uniform(0.3, 0.8), 2)
+    server_alpha = round(float(alpha), 2) if alpha is not None else round(random.uniform(0.3, 0.8), 2)
+    server_beta = float(beta)
     min_vm_cpu_and_ram_value = 1/v # min cpu and ram to host vm
     vm_cpu_value = min_vm_cpu_and_ram_value
     vm_mem_value = min_vm_cpu_and_ram_value
@@ -39,7 +44,7 @@ def add_graph_vertices_and_edges_attributes(g, seed=None):
     vertex['VM_CPU_and_MEM'] = {(vm_cpu_value, vm_mem_value)}
     vertex['Cumulative_Server_CPU_and_MEM'] = {
       (cumulative_server_cpu_value, cumulative_server_mem_value)}
-    vertex['Power_Consumption_Coefficients'] = {(alpha, beta)}
+    vertex['Power_Consumption_Coefficients'] = {(server_alpha, server_beta)}
   
   if new_graph.vcount() > 1:
     # Collect edge tuples from the original graph with adjusted IDs
@@ -58,7 +63,13 @@ def get_number_of_active_VM_state_at_time_t(VM_request_state):
   active_VMs = VM_request_state.count(1)
   return active_VMs
 
-def create_a_server_farm(num_servers, seed=None):
+def create_a_server_farm(
+  num_servers,
+  seed=None,
+  num_vm_types=10,
+  alpha=None,
+  beta=10,
+):
   if seed is not None:
     random.seed(seed)
   else:
@@ -70,10 +81,23 @@ def create_a_server_farm(num_servers, seed=None):
   else:
     g = ig.Graph.Barabasi(
       n=num_servers, m=2, directed=False)
-  g = add_graph_vertices_and_edges_attributes(g)
+  g = add_graph_vertices_and_edges_attributes(
+    g,
+    seed=seed,
+    num_vm_types=num_vm_types,
+    alpha=alpha,
+    beta=beta,
+  )
   return g
 
-def create_server_farms(total_servers, num_farms, seed=None):
+def create_server_farms(
+  total_servers,
+  num_farms,
+  seed=None,
+  num_vm_types=10,
+  alpha=None,
+  beta=10,
+):
   if seed is not None:
     random.seed(seed)
   else:
@@ -86,7 +110,15 @@ def create_server_farms(total_servers, num_farms, seed=None):
   
   for i in range(num_farms):
     num_servers = servers_per_farm + (1 if i < remaining_servers else 0)
-    farm_graphs.append(create_a_server_farm(num_servers, seed))
+    farm_graphs.append(
+      create_a_server_farm(
+        num_servers,
+        seed=seed,
+        num_vm_types=num_vm_types,
+        alpha=alpha,
+        beta=beta,
+      )
+    )
   
   return farm_graphs
 
