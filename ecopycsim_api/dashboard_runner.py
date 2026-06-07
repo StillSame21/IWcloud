@@ -1133,6 +1133,7 @@ class DashboardRunner:
     assert session.training_params is not None
     history_entry = {
       'id': session.run_id,
+      'runType': session.run_type,
       'type': RUN_TYPE_LABELS[session.run_type],
       'dateTime': datetime.now().strftime('%Y-%m-%d %H:%M'),
       'parameters': {

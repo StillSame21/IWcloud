@@ -311,31 +311,31 @@ function AgentRewardChart({ data }) {
             fillOpacity={0.08}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="farmReward"
             name="Server farm agent"
             stroke="#10b981"
             strokeWidth={2.5}
-            dot={false}
+            dot={{ r: 2, strokeWidth: 1.5, fill: '#ffffff' }}
             isAnimationActive={false}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="serverReward"
             name="Server agent"
             stroke="#0ea5e9"
             strokeWidth={2.5}
-            dot={false}
+            dot={{ r: 2, strokeWidth: 1.5, fill: '#ffffff' }}
             isAnimationActive={false}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="smoothedFarmReward"
-            name="Smoothed farm"
+            name="Smoothed total reward"
             stroke="#f59e0b"
             strokeWidth={2}
             strokeDasharray="6 5"
-            dot={false}
+            dot={{ r: 2, strokeWidth: 1.5, fill: '#ffffff' }}
             isAnimationActive={false}
           />
         </LineChart>

@@ -15,16 +15,13 @@ import StatusBadge from './StatusBadge'
 import { useAppState } from '../context/useAppState'
 import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
-const maxSelectedRuns = 2
+const minSelectedRuns = 2
+const maxSelectedRuns = 4
 const evaluationRunTypes = [
   'Evaluation Random Algorithm',
   'Evaluated Trained Model',
 ]
-const chartColors = ['#2563eb', '#d97706']
-const workloadLineColors = {
-  'Evaluated Trained Model': '#2563eb',
-  'Evaluation Random Algorithm': '#d97706',
-}
+const chartColors = ['#2563eb', '#d97706', '#059669', '#7c3aed']
 const chartGridStroke = '#e2e8f0'
 const axisStroke = '#94a3b8'
 const axisTick = { fill: '#64748b', fontSize: 12 }
@@ -76,8 +73,8 @@ function getRunDisplayName(run) {
   return run.id
 }
 
-function getRunChartColor(run, index) {
-  return workloadLineColors[run.type] ?? chartColors[index]
+function getRunChartColor(index) {
+  return chartColors[index % chartColors.length]
 }
 
 function getInitialSelectedRunIds(runHistory) {
@@ -226,9 +223,9 @@ function EvaluationOverview({ selectedRuns }) {
         tone="border-l-sky-500"
       />
       <OverviewCard
-        label="Evaluation Pair"
+        label="Selected Evaluations"
         value={`${selectedRuns.length}/${maxSelectedRuns}`}
-        helper="Random algorithm and trained model"
+        helper={`${minSelectedRuns}-${maxSelectedRuns} evaluations can be compared`}
         tone="border-l-emerald-500"
       />
     </div>
@@ -333,8 +330,7 @@ function SelectorStat({ label, value }) {
 function EmptyComparison() {
   return (
     <section className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-semibold text-slate-500">
-      Select two evaluation runs to compare random algorithm and trained model
-      performance.
+      Select at least two evaluation runs to compare performance.
     </section>
   )
 }
@@ -579,7 +575,7 @@ function EnergyPerTimeStepChart({ data, selectedRuns }) {
               type="monotone"
               dataKey={run.id}
               name={getRunDisplayName(run)}
-              stroke={getRunChartColor(run, index)}
+              stroke={getRunChartColor(index)}
               strokeWidth={3}
               dot={false}
               isAnimationActive={false}
@@ -611,7 +607,7 @@ function JobAcceptanceRateCard({ selectedRuns }) {
               </div>
               <span
                 className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: getRunChartColor(run, index) }}
+                style={{ backgroundColor: getRunChartColor(index) }}
               />
             </div>
             <p className="mt-4 text-3xl font-semibold text-slate-950">
@@ -676,7 +672,7 @@ function WallTimePerWorkloadChart({ data, selectedRuns }) {
               key={run.id}
               dataKey={run.id}
               name={getRunDisplayName(run)}
-              fill={getRunChartColor(run, index)}
+              fill={getRunChartColor(index)}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
             />
@@ -698,19 +694,19 @@ function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
   return (
     <ChartCard
       title="Energy Usage and Price Per Workload / Number of Jobs"
-      bodyClass="mt-4 h-[24rem]"
+      bodyClass="mt-4 h-[28rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
-          barCategoryGap="18%"
-          barGap={4}
-          margin={{ top: 12, right: 48, bottom: 58, left: 16 }}
+          barCategoryGap="10%"
+          barGap={2}
+          margin={{ top: 12, right: 52, bottom: 76, left: 16 }}
         >
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
             dataKey="workload"
-            height={66}
+            height={76}
             label={{
               value: 'Number of Jobs',
               position: 'insideBottom',
@@ -756,14 +752,17 @@ function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
               name,
             ]}
           />
-          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 14 }} />
+          <Legend
+            verticalAlign="bottom"
+            wrapperStyle={{ lineHeight: '22px', paddingTop: 18 }}
+          />
           {selectedRuns.map((run, index) => (
             <Bar
               key={`${run.id}-energy`}
               yAxisId="energy"
               dataKey={`${run.id}-energy`}
               name={`${getRunDisplayName(run)} energy usage`}
-              fill={getRunChartColor(run, index)}
+              fill={getRunChartColor(index)}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
             />
@@ -774,9 +773,9 @@ function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
               yAxisId="price"
               dataKey={`${run.id}-price`}
               name={`${getRunDisplayName(run)} energy price`}
-              fill={getRunChartColor(run, index)}
+              fill={getRunChartColor(index)}
               fillOpacity={0.42}
-              stroke={getRunChartColor(run, index)}
+              stroke={getRunChartColor(index)}
               strokeWidth={1.5}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
@@ -820,7 +819,7 @@ function ServerFarmCpuComparisonChart({ data, selectedRuns }) {
               key={run.id}
               dataKey={run.id}
               name={getRunDisplayName(run)}
-              fill={getRunChartColor(run, index)}
+              fill={getRunChartColor(index)}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
             />
@@ -886,7 +885,10 @@ export default function ComparisonPage() {
   )
 
   const selectedRuns = useMemo(
-    () => evaluationRuns.filter((run) => selectedRunIds.includes(run.id)),
+    () =>
+      selectedRunIds
+        .map((runId) => evaluationRuns.find((run) => run.id === runId))
+        .filter(Boolean),
     [evaluationRuns, selectedRunIds],
   )
 
@@ -907,7 +909,7 @@ export default function ComparisonPage() {
         onToggleRun={toggleRun}
       />
 
-      {selectedRuns.length < maxSelectedRuns ? (
+      {selectedRuns.length < minSelectedRuns ? (
         <EmptyComparison />
       ) : (
         <ComparisonResults selectedRuns={selectedRuns} />

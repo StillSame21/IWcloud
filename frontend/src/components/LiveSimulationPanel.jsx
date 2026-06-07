@@ -122,22 +122,22 @@ function LiveMetricsChart({ metrics }) {
         <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 12 }} />
         <Line
           yAxisId="energy"
-          type="monotone"
+          type="linear"
           dataKey="totalEnergyCost"
           name="Total Energy Cost"
           stroke="#2563eb"
           strokeWidth={3}
-          dot={false}
+          dot={{ r: 2.5, strokeWidth: 1.5, fill: '#ffffff' }}
           isAnimationActive={false}
         />
         <Line
           yAxisId="wallTime"
-          type="monotone"
+          type="linear"
           dataKey="wallTime"
           name="Wall Time"
           stroke="#d97706"
           strokeWidth={3}
-          dot={false}
+          dot={{ r: 2.5, strokeWidth: 1.5, fill: '#ffffff' }}
           isAnimationActive={false}
         />
       </LineChart>

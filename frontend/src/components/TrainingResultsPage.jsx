@@ -16,7 +16,7 @@ import { useAppState } from '../context/useAppState'
 import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
 
 const maxSelectedRuns = 2
-const trainingRunType = 'Training'
+const trainingRunTypes = new Set(['Training', 'Train Model'])
 const chartColors = ['#2563eb', '#d97706']
 const chartGridStroke = '#e2e8f0'
 const axisStroke = '#94a3b8'
@@ -47,8 +47,15 @@ function formatPercent(value) {
 
 function getTrainingRuns(runHistory) {
   return runHistory.filter(
-    (run) => run.type === trainingRunType && run.trainingResults,
+    (run) =>
+      (run.runType === 'training' || trainingRunTypes.has(run.type)) &&
+      run.trainingResults,
   )
+}
+
+function getTrainingRunDisplayName(run, savedModels) {
+  const linkedModel = savedModels.find((model) => model.runId === run.id)
+  return linkedModel?.name ?? run.displayName ?? run.id
 }
 
 function getInitialSelectedRunIds(runHistory) {
@@ -138,7 +145,12 @@ function PageIntro({ selectedCount, trainingRunCount }) {
   )
 }
 
-function RunSelectorGrid({ onToggleRun, selectedRunIds, trainingRuns }) {
+function RunSelectorGrid({
+  onToggleRun,
+  savedModels,
+  selectedRunIds,
+  trainingRuns,
+}) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {trainingRuns.map((run) => {
@@ -151,6 +163,7 @@ function RunSelectorGrid({ onToggleRun, selectedRunIds, trainingRuns }) {
             run={run}
             isDisabled={isDisabled}
             isSelected={isSelected}
+            savedModels={savedModels}
             onToggle={() => onToggleRun(run.id)}
           />
         )
@@ -159,7 +172,13 @@ function RunSelectorGrid({ onToggleRun, selectedRunIds, trainingRuns }) {
   )
 }
 
-function RunSelectorCard({ isDisabled, isSelected, onToggle, run }) {
+function RunSelectorCard({
+  isDisabled,
+  isSelected,
+  onToggle,
+  run,
+  savedModels,
+}) {
   const selectedClass = isSelected
     ? 'border-sky-500 ring-2 ring-sky-500/15'
     : 'border-slate-200'
@@ -179,7 +198,9 @@ function RunSelectorCard({ isDisabled, isSelected, onToggle, run }) {
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-950">{run.id}</span>
+            <span className="font-semibold text-slate-950">
+              {getTrainingRunDisplayName(run, savedModels)}
+            </span>
             <StatusBadge label={run.type} />
           </div>
           <p className="mt-1 text-sm text-slate-500">{run.dateTime}</p>
@@ -222,7 +243,7 @@ function EmptyComparison() {
   )
 }
 
-function ComparisonTable({ selectedRuns }) {
+function ComparisonTable({ savedModels, selectedRuns }) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 p-5">
@@ -235,7 +256,7 @@ function ComparisonTable({ selectedRuns }) {
               <th className={tableHeadingClass}>Metric</th>
               {selectedRuns.map((run) => (
                 <th key={run.id} className={tableHeadingClass}>
-                  {run.id}
+                  {getTrainingRunDisplayName(run, savedModels)}
                 </th>
               ))}
             </tr>
@@ -434,7 +455,7 @@ function buildAverageEnergyComparisonData(selectedRuns) {
   })
 }
 
-function RewardComparisonChart({ data, selectedRuns }) {
+function RewardComparisonChart({ data, savedModels, selectedRuns }) {
   const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
     includeZero: true,
   })
@@ -473,7 +494,7 @@ function RewardComparisonChart({ data, selectedRuns }) {
               key={run.id}
               type="monotone"
               dataKey={run.id}
-              name={`${run.id} reward`}
+              name={`${getTrainingRunDisplayName(run, savedModels)} reward`}
               stroke={chartColors[index]}
               strokeWidth={3}
               dot={false}
@@ -486,7 +507,7 @@ function RewardComparisonChart({ data, selectedRuns }) {
   )
 }
 
-function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
+function EnergyWallTimeComparisonChart({ data, savedModels, selectedRuns }) {
   const energyKeys = selectedRuns.map((run) => `${run.id}-energy`)
   const wallTimeKeys = selectedRuns.map((run) => `${run.id}-wallTime`)
   const energyDomain = getAdaptiveDomain(data, energyKeys, { zeroMin: true })
@@ -551,7 +572,7 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
               yAxisId="energy"
               type="monotone"
               dataKey={`${run.id}-energy`}
-              name={`${run.id} energy`}
+              name={`${getTrainingRunDisplayName(run, savedModels)} energy`}
               stroke={chartColors[index]}
               strokeWidth={3}
               dot={false}
@@ -564,7 +585,7 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
               yAxisId="wallTime"
               type="monotone"
               dataKey={`${run.id}-wallTime`}
-              name={`${run.id} wall time`}
+              name={`${getTrainingRunDisplayName(run, savedModels)} wall time`}
               stroke={chartColors[index]}
               strokeDasharray="6 5"
               strokeWidth={2.5}
@@ -578,14 +599,16 @@ function EnergyWallTimeComparisonChart({ data, selectedRuns }) {
   )
 }
 
-function ActorCriticLossChart({ run }) {
+function ActorCriticLossChart({ run, savedModels }) {
   const yDomain = getAdaptiveDomain(run.trainingResults.lossSeries, [
     'actorLoss',
     'criticLoss',
   ], { zeroMin: true })
 
   return (
-    <ChartCard title={`${run.id} Actor and Critic Loss`}>
+    <ChartCard
+      title={`${getTrainingRunDisplayName(run, savedModels)} Actor and Critic Loss`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={run.trainingResults.lossSeries}
@@ -627,7 +650,7 @@ function ActorCriticLossChart({ run }) {
   )
 }
 
-function QValueReplayBufferChart({ run }) {
+function QValueReplayBufferChart({ run, savedModels }) {
   const qValueDomain = getAdaptiveDomain(
     run.trainingResults.replaySeries,
     'qValue',
@@ -635,7 +658,9 @@ function QValueReplayBufferChart({ run }) {
   )
 
   return (
-    <ChartCard title={`${run.id} Q-Value and Replay Buffer`}>
+    <ChartCard
+      title={`${getTrainingRunDisplayName(run, savedModels)} Q-Value and Replay Buffer`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={run.trainingResults.replaySeries}
@@ -688,7 +713,7 @@ function QValueReplayBufferChart({ run }) {
   )
 }
 
-function AverageEnergyByJobLoadChart({ data, selectedRuns }) {
+function AverageEnergyByJobLoadChart({ data, savedModels, selectedRuns }) {
   const yDomain = getAdaptiveDomain(data, selectedRuns.map((run) => run.id), {
     zeroMin: true,
   })
@@ -715,7 +740,7 @@ function AverageEnergyByJobLoadChart({ data, selectedRuns }) {
             <Bar
               key={run.id}
               dataKey={run.id}
-              name={run.id}
+              name={getTrainingRunDisplayName(run, savedModels)}
               fill={chartColors[index]}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
@@ -727,9 +752,11 @@ function AverageEnergyByJobLoadChart({ data, selectedRuns }) {
   )
 }
 
-function ServerFarmAverageCpuChart({ run }) {
+function ServerFarmAverageCpuChart({ run, savedModels }) {
   return (
-    <ChartCard title={`${run.id} Server Farm Average CPU Utilisation Rate`}>
+    <ChartCard
+      title={`${getTrainingRunDisplayName(run, savedModels)} Server Farm Average CPU Utilisation Rate`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={run.trainingResults.serverFarmAverageCpu}
@@ -767,7 +794,7 @@ function ServerFarmAverageCpuChart({ run }) {
   )
 }
 
-function ComparisonResults({ selectedRuns }) {
+function ComparisonResults({ savedModels, selectedRuns }) {
   const rewardComparisonData = useMemo(
     () => buildRewardComparisonData(selectedRuns),
     [selectedRuns],
@@ -783,36 +810,51 @@ function ComparisonResults({ selectedRuns }) {
 
   return (
     <>
-      <ComparisonTable selectedRuns={selectedRuns} />
+      <ComparisonTable savedModels={savedModels} selectedRuns={selectedRuns} />
       <RewardComparisonChart
         data={rewardComparisonData}
+        savedModels={savedModels}
         selectedRuns={selectedRuns}
       />
       <EnergyWallTimeComparisonChart
         data={energyWallTimeData}
+        savedModels={savedModels}
         selectedRuns={selectedRuns}
       />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {selectedRuns.map((run) => (
-          <ActorCriticLossChart key={run.id} run={run} />
+          <ActorCriticLossChart
+            key={run.id}
+            run={run}
+            savedModels={savedModels}
+          />
         ))}
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {selectedRuns.map((run) => (
-          <QValueReplayBufferChart key={run.id} run={run} />
+          <QValueReplayBufferChart
+            key={run.id}
+            run={run}
+            savedModels={savedModels}
+          />
         ))}
       </div>
 
       <AverageEnergyByJobLoadChart
         data={averageEnergyData}
+        savedModels={savedModels}
         selectedRuns={selectedRuns}
       />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {selectedRuns.map((run) => (
-          <ServerFarmAverageCpuChart key={run.id} run={run} />
+          <ServerFarmAverageCpuChart
+            key={run.id}
+            run={run}
+            savedModels={savedModels}
+          />
         ))}
       </div>
     </>
@@ -820,38 +862,55 @@ function ComparisonResults({ selectedRuns }) {
 }
 
 export default function TrainingResultsPage() {
-  const { runHistory } = useAppState()
+  const { runHistory, savedModels } = useAppState()
   const trainingRuns = useMemo(() => getTrainingRuns(runHistory), [runHistory])
   const [selectedRunIds, setSelectedRunIds] = useState(() =>
     getInitialSelectedRunIds(runHistory),
   )
+  const effectiveSelectedRunIds = useMemo(() => {
+    const availableIds = trainingRuns.map((run) => run.id)
+    const validSelectedIds = selectedRunIds.filter((id) =>
+      availableIds.includes(id),
+    )
+
+    if (validSelectedIds.length > 0) {
+      return validSelectedIds.slice(0, maxSelectedRuns)
+    }
+
+    return availableIds.slice(0, maxSelectedRuns)
+  }, [selectedRunIds, trainingRuns])
 
   const selectedRuns = useMemo(
-    () => trainingRuns.filter((run) => selectedRunIds.includes(run.id)),
-    [selectedRunIds, trainingRuns],
+    () =>
+      trainingRuns.filter((run) => effectiveSelectedRunIds.includes(run.id)),
+    [effectiveSelectedRunIds, trainingRuns],
   )
 
   const toggleRun = (runId) => {
-    setSelectedRunIds((currentIds) => getNextSelectedRunIds(currentIds, runId))
+    setSelectedRunIds(getNextSelectedRunIds(effectiveSelectedRunIds, runId))
   }
 
   return (
     <section className="space-y-5">
       <PageIntro
-        selectedCount={selectedRunIds.length}
+        selectedCount={effectiveSelectedRunIds.length}
         trainingRunCount={trainingRuns.length}
       />
 
       <RunSelectorGrid
+        savedModels={savedModels}
         trainingRuns={trainingRuns}
-        selectedRunIds={selectedRunIds}
+        selectedRunIds={effectiveSelectedRunIds}
         onToggleRun={toggleRun}
       />
 
       {selectedRuns.length < maxSelectedRuns ? (
         <EmptyComparison />
       ) : (
-        <ComparisonResults selectedRuns={selectedRuns} />
+        <ComparisonResults
+          savedModels={savedModels}
+          selectedRuns={selectedRuns}
+        />
       )}
     </section>
   )

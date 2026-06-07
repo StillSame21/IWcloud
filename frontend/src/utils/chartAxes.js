@@ -90,7 +90,7 @@ export function formatAdaptiveTick(value) {
 
   if (absoluteValue >= 1000) {
     return Intl.NumberFormat('en-US', {
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 1,
       notation: 'compact',
     }).format(value)
   }

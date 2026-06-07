@@ -8,8 +8,8 @@ export const backendStatus = {
 export const activePreset = 'Normal'
 
 export const savedModels = [
-  { id: 'maddpg-normal-v1', name: 'Model 1' },
-  { id: 'maddpg-balanced-v2', name: 'Model 2' },
+  { id: 'maddpg-normal-v1', name: 'Model 1', runId: 'RUN-2402' },
+  { id: 'maddpg-balanced-v2', name: 'Model 2', runId: 'RUN-2404' },
   { id: 'maddpg-energy-saver', name: 'Model 3' },
 ]
 
