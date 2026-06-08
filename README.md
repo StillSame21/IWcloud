@@ -56,17 +56,17 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev
 
 ## User Interface
 
-| Dashboard | Simulation Result Comparison |
+| Training Result Comparison View | Simulation Result Comparison |
 | --- | --- |
-| ![Dashboard](asset/Dashboard.png) | ![Simulation Result Comparison](asset/Simulation%20Result%20Comparison.png) |
+| ![Training Result Comparison View](asset/Training%20Result%20comparison%201.png)  | ![Simulation Result Comparison](asset/Simulation%20Result%20Comparison.png) |
 
 | Training Result Comparison | Training Result Comparison Detail |
 | --- | --- |
 | ![Training Result Comparison](asset/Training%20Result%20Comparison.png) | ![Training Result Comparison Detail](asset/Training%20Result%20Comparison2.png) |
 
-| Training Result Comparison View |
+|  Dashboard  |
 | --- |
-| ![Training Result Comparison View](asset/Training%20Result%20comparison%201.png) |
+| ![Dashboard](asset/Dashboard.png)  |
 
 The React dashboard is organized into three main tabs:
 
