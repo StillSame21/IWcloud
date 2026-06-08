@@ -1,16 +1,51 @@
-# React + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite dashboard for configuring, running, and viewing EcoPyCSIM/MADDPG experiments.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+The app usually runs at `http://localhost:5173`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## API URL
 
-## Expanding the ESLint configuration
+The frontend calls `http://localhost:8000` by default. Override it when needed:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+VITE_API_BASE_URL=http://localhost:8000 npm run dev
+```
+
+## Scripts
+
+- `npm run dev` starts the local Vite dev server.
+- `npm run build` creates the production build in `dist/`.
+- `npm run preview` previews the production build.
+- `npm run lint` runs ESLint.
+
+## Structure
+
+```text
+frontend/
+  src/
+    App.jsx                    App shell and tab navigation
+    main.jsx                   React entry point
+    index.css                  Tailwind/global styles
+    services/dashboardApi.js   REST and WebSocket API client
+    context/                   Shared dashboard state
+    components/                Dashboard pages and reusable UI
+    utils/                     Chart/data helpers
+    mockData.js                Local fallback/demo data
+  public/                      Static public assets
+  package.json                 Scripts and dependencies
+  vite.config.js               Vite, React, and Tailwind setup
+```
+
+## Important
+
+- Commit `src/`, `public/`, `package.json`, `package-lock.json`, and config files.
+- Do not commit `node_modules/` or `dist/`; both are generated locally.
+- Keep API calls centralized in `src/services/dashboardApi.js` so backend changes are easy to maintain.
