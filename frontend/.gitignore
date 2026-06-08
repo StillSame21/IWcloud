@@ -17,12 +17,6 @@ coverage
 .env.local
 .env.*.local
 
-# Project config and package metadata
-package-lock.json
-package.json
-vite.config.js
-eslint.config.js
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
