@@ -54,6 +54,34 @@ The frontend calls `http://localhost:8000` by default. To use a different API UR
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
+## User Interface
+
+| Dashboard | Simulation Result Comparison |
+| --- | --- |
+| ![Dashboard](asset/Dashboard.png) | ![Simulation Result Comparison](asset/Simulation%20Result%20Comparison.png) |
+
+| Training Result Comparison | Training Result Comparison Detail |
+| --- | --- |
+| ![Training Result Comparison](asset/Training%20Result%20Comparison.png) | ![Training Result Comparison Detail](asset/Training%20Result%20Comparison2.png) |
+
+| Training Result Comparison View |
+| --- |
+| ![Training Result Comparison View](asset/Training%20Result%20comparison%201.png) |
+
+The React dashboard is organized into three main tabs:
+
+- `Dashboard` is the main control area for selecting run type, editing simulation/training parameters, starting runs, stopping runs, and watching live metrics.
+- `Training Results` shows saved training history, model progress, reward/loss charts, and training summaries.
+- `Evaluation Comparison` compares random scheduling and trained-model evaluation results across completed runs.
+
+The dashboard supports three run modes:
+
+- `Evaluation Random Algorithm` runs the simulation with random scheduling actions.
+- `Train Model` trains a MADDPG model and saves the model under `results/dashboard/models/`.
+- `Evaluated Trained Model` loads a saved model and evaluates it against matching simulation topology settings.
+
+Use the backend status indicator in the UI to confirm the API is connected before starting a run.
+
 ## Navigation
 
 ```text
