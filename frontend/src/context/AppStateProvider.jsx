@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppStateContext } from './AppStateContext'
 import {
+  buildStartRunPayload,
+  topologyKeys,
+  upsertById,
+} from './appStateHelpers'
+import {
   activePreset as fallbackPreset,
   backendStatus,
   defaultSimulationParams,
@@ -16,34 +21,6 @@ import {
   createEmptyHeatmap,
   updateTrainingTelemetry,
 } from '../utils/telemetry'
-
-const topologyKeys = [
-  'numberOfServerFarms',
-  'numberOfServers',
-  'numberOfVmTypes',
-]
-
-function upsertById(items, item) {
-  if (!item?.id) {
-    return items
-  }
-
-  return [item, ...items.filter((currentItem) => currentItem.id !== item.id)]
-}
-
-function buildStartRunPayload({
-  selectedModel,
-  selectedRunType,
-  simParams,
-  trainingParams,
-}) {
-  return {
-    runType: selectedRunType,
-    simParams,
-    trainingParams: selectedRunType === 'training' ? trainingParams : undefined,
-    selectedModel: selectedRunType === 'inference' ? selectedModel : undefined,
-  }
-}
 
 export default function AppStateProvider({ children }) {
   const streamRef = useRef(null)
