@@ -12,38 +12,37 @@ import {
   YAxis,
 } from 'recharts'
 import StatusBadge from './StatusBadge'
+import ChartCard from './shared/ChartCard'
+import EmptyComparison from './shared/EmptyComparison'
+import MetricRow from './shared/MetricRow'
+import PageIntro from './shared/PageIntro'
+import SectionTitle from './shared/SectionTitle'
+import SelectorStat from './shared/SelectorStat'
 import { useAppState } from '../context/useAppState'
 import { formatAdaptiveTick, getAdaptiveDomain } from '../utils/chartAxes'
+import {
+  axisStroke,
+  axisTick,
+  chartGridStroke,
+  tableHeadingClass,
+  tooltipStyle,
+} from '../utils/chartTheme'
+import { formatNumber, formatPercent } from '../utils/format'
+import {
+  getJobAcceptanceRate,
+  getJobAcceptanceSummary,
+  getMetricEnergy,
+  getMetricEpisode,
+  getMetricWallTime,
+} from '../utils/runMetrics'
+import {
+  getInitialSelectedRunIds,
+  getNextSelectedRunIds,
+} from '../utils/runSelection'
 
 const maxSelectedRuns = 2
 const trainingRunTypes = new Set(['Training', 'Train Model'])
 const chartColors = ['#2563eb', '#d97706']
-const chartGridStroke = '#e2e8f0'
-const axisStroke = '#94a3b8'
-const axisTick = { fill: '#64748b', fontSize: 12 }
-const tooltipStyle = {
-  borderColor: '#334155',
-  borderRadius: '12px',
-  background: '#0f172a',
-  color: '#ffffff',
-}
-
-const cardClass = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
-const chartCardClass = `${cardClass} min-h-[420px]`
-const tableHeadingClass =
-  'whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-slate-500'
-const tableLabelClass = 'whitespace-nowrap px-4 py-3 font-semibold text-slate-700'
-const tableValueClass = 'whitespace-nowrap px-4 py-3 text-slate-600'
-
-function formatNumber(value, maximumFractionDigits = 2) {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits,
-  }).format(value ?? 0)
-}
-
-function formatPercent(value) {
-  return `${formatNumber(value, 1)}%`
-}
 
 function getTrainingRuns(runHistory) {
   return runHistory.filter(
@@ -58,91 +57,8 @@ function getTrainingRunDisplayName(run, savedModels) {
   return linkedModel?.name ?? run.displayName ?? run.id
 }
 
-function getInitialSelectedRunIds(runHistory) {
-  return getTrainingRuns(runHistory)
-    .slice(0, maxSelectedRuns)
-    .map((run) => run.id)
-}
-
-function getNextSelectedRunIds(currentIds, runId) {
-  if (currentIds.includes(runId)) {
-    return currentIds.filter((id) => id !== runId)
-  }
-
-  if (currentIds.length >= maxSelectedRuns) {
-    return currentIds
-  }
-
-  return [...currentIds, runId]
-}
-
-function getMetricEpisode(point, index) {
-  return point?.episode ?? index + 1
-}
-
-function getMetricEnergy(point) {
-  return point?.totalEnergyCost ?? point?.totalEnergy ?? point?.energyCost ?? 0
-}
-
-function getMetricWallTime(point) {
-  return point?.wallTime ?? point?.stepTime ?? 0
-}
-
-function getRejectedJobs(run) {
-  return run.summary.rejectedJobs ?? run.summary.rejectedTasks ?? 0
-}
-
-function getJobAcceptanceRate(run) {
-  const totalJobs = run.parameters.numberOfJobs ?? 0
-
-  if (totalJobs === 0) {
-    return 0
-  }
-
-  const acceptedJobs = Math.max(totalJobs - getRejectedJobs(run), 0)
-  return (acceptedJobs / totalJobs) * 100
-}
-
-function getJobAcceptanceSummary(run) {
-  const totalJobs = run.parameters.numberOfJobs ?? 0
-  const acceptedJobs = Math.max(totalJobs - getRejectedJobs(run), 0)
-
-  return `${formatNumber(acceptedJobs, 0)}/${formatNumber(totalJobs, 0)}`
-}
-
 function getRunModelName(run) {
   return run.parameters.training?.networkArchitecture ?? 'Not recorded'
-}
-
-function SectionTitle({ title }) {
-  return (
-    <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-950">
-      {title}
-    </h2>
-  )
-}
-
-function PageIntro({ selectedCount, trainingRunCount }) {
-  return (
-    <section className={cardClass}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <SectionTitle title="Training Results" />
-          <p className="mt-2 text-sm text-slate-500">
-            Compare completed trained model runs side by side.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-            {selectedCount}/{maxSelectedRuns} selected
-          </span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-            {trainingRunCount} training runs
-          </span>
-        </div>
-      </div>
-    </section>
-  )
 }
 
 function RunSelectorGrid({
@@ -221,25 +137,6 @@ function RunSelectorCard({
         </div>
       </div>
     </label>
-  )
-}
-
-function SelectorStat({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-semibold text-slate-950">{value}</p>
-    </div>
-  )
-}
-
-function EmptyComparison() {
-  return (
-    <section className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-semibold text-slate-500">
-      Select two training runs to compare trained model metrics.
-    </section>
   )
 }
 
@@ -349,28 +246,6 @@ function TableSection({ columnCount, label }) {
         {label}
       </td>
     </tr>
-  )
-}
-
-function MetricRow({ getValue, label, selectedRuns }) {
-  return (
-    <tr>
-      <td className={tableLabelClass}>{label}</td>
-      {selectedRuns.map((run) => (
-        <td key={`${run.id}-${label}`} className={tableValueClass}>
-          {getValue(run) ?? 'Not recorded'}
-        </td>
-      ))}
-    </tr>
-  )
-}
-
-function ChartCard({ bodyClass = 'mt-4 h-80', children, title }) {
-  return (
-    <section className={chartCardClass}>
-      <SectionTitle title={title} />
-      <div className={bodyClass}>{children}</div>
-    </section>
   )
 }
 
@@ -865,7 +740,7 @@ export default function TrainingResultsPage() {
   const { runHistory, savedModels } = useAppState()
   const trainingRuns = useMemo(() => getTrainingRuns(runHistory), [runHistory])
   const [selectedRunIds, setSelectedRunIds] = useState(() =>
-    getInitialSelectedRunIds(runHistory),
+    getInitialSelectedRunIds(getTrainingRuns(runHistory), maxSelectedRuns),
   )
   const effectiveSelectedRunIds = useMemo(() => {
     const availableIds = trainingRuns.map((run) => run.id)
@@ -887,14 +762,20 @@ export default function TrainingResultsPage() {
   )
 
   const toggleRun = (runId) => {
-    setSelectedRunIds(getNextSelectedRunIds(effectiveSelectedRunIds, runId))
+    setSelectedRunIds(
+      getNextSelectedRunIds(effectiveSelectedRunIds, runId, maxSelectedRuns),
+    )
   }
 
   return (
     <section className="space-y-5">
       <PageIntro
-        selectedCount={effectiveSelectedRunIds.length}
-        trainingRunCount={trainingRuns.length}
+        title="Training Results"
+        description="Compare completed trained model runs side by side."
+        badges={[
+          `${effectiveSelectedRunIds.length}/${maxSelectedRuns} selected`,
+          `${trainingRuns.length} training runs`,
+        ]}
       />
 
       <RunSelectorGrid
@@ -905,7 +786,9 @@ export default function TrainingResultsPage() {
       />
 
       {selectedRuns.length < maxSelectedRuns ? (
-        <EmptyComparison />
+        <EmptyComparison>
+          Select two training runs to compare trained model metrics.
+        </EmptyComparison>
       ) : (
         <ComparisonResults
           savedModels={savedModels}

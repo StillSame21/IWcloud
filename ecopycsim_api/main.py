@@ -5,11 +5,9 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, stat
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from ecopycsim_api.dashboard_runner import (
-  DashboardRunner,
-  RunRequestError,
-  TERMINAL_EVENT_TYPES,
-)
+from ecopycsim_api.config import TERMINAL_EVENT_TYPES
+from ecopycsim_api.runner import DashboardRunner
+from ecopycsim_api.session import RunRequestError
 
 
 class StartRunRequest(BaseModel):
