@@ -2,10 +2,26 @@ from components.models import server, server_farm
 from components.model_scripts.make_server_farms import create_server_farms, print_single_graph_attributes, print_all_graph_attributes
 from components.models import vm
 
-def initialize_server_farms(total_servers, num_farms, seed=None):
+def initialize_server_farms(
+  total_servers,
+  num_farms,
+  seed=None,
+  num_vm_types=10,
+  energy_alpha=None,
+  energy_beta=10,
+  static_power=0.035,
+  optimal_utilization_rate=0.7,
+):
   if seed is not None:
     seed = seed
-  farm_graphs = create_server_farms(total_servers, num_farms, seed)
+  farm_graphs = create_server_farms(
+    total_servers,
+    num_farms,
+    seed,
+    num_vm_types=num_vm_types,
+    alpha=energy_alpha,
+    beta=energy_beta,
+  )
   #print_all_graph_attributes(farm_graphs)
   server_farms = []
 
@@ -34,7 +50,16 @@ def initialize_server_farms(total_servers, num_farms, seed=None):
       server_beta = next(iter(pwr_consumption_coefficients))[1]
 
       a_server = server.Server(
-        server_id, idx, vm_list, server_cpu, server_ram, server_alpha, server_beta)
+        server_id,
+        idx,
+        vm_list,
+        server_cpu,
+        server_ram,
+        server_alpha,
+        server_beta,
+        static_power=static_power,
+        optimal_utilization_rate=optimal_utilization_rate,
+      )
       server_list.append(a_server)
 
     num_servers = graph.vcount()

@@ -37,7 +37,18 @@ class MADDPG:
         else torch.device("cpu")
     )
 
-    def __init__(self, dim_info, capacity, batch_size, actor_lr, critic_lr, res_dir, device=None):
+    def __init__(
+        self,
+        dim_info,
+        capacity,
+        batch_size,
+        actor_lr,
+        critic_lr,
+        res_dir,
+        device=None,
+        hidden_dims=(64, 64),
+        optimizer_name='Adam',
+    ):
         self.device = device if device is not None else (
             torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         )
@@ -55,13 +66,29 @@ class MADDPG:
             obs_dim = sum(np.prod(obs_shape) for obs_shape in info['obs_shape'].values())
             act_dim = info['action_dim']
             #print(f"Initializing agent {agent_id}: obs_dim={obs_dim}, act_dim={act_dim}")
-            self.agents[agent_id] = Agent(obs_dim, act_dim, global_obs_dim + global_act_dim, actor_lr, critic_lr, self.device)
+            self.agents[agent_id] = Agent(
+                obs_dim,
+                act_dim,
+                global_obs_dim + global_act_dim,
+                actor_lr,
+                critic_lr,
+                self.device,
+                hidden_dims=hidden_dims,
+                optimizer_name=optimizer_name,
+            )
             self.buffers[agent_id] = Buffer(capacity, obs_dim, act_dim, self.device)
         self.dim_info = dim_info
 
         self.batch_size = batch_size
         self.res_dir = res_dir  # directory to save the training result
         self.logger = setup_logger(os.path.join(res_dir, 'maddpg.log'))
+
+    @property
+    def buffer_fill_percent(self):
+        if not self.buffers:
+            return 0
+        buffer = next(iter(self.buffers.values()))
+        return min(100, (len(buffer) / max(buffer.capacity, 1)) * 100)
 
     def flatten_obs(self, obs_dict):
         #print("obs dict: ")
@@ -126,6 +153,10 @@ class MADDPG:
         return actions
 
     def learn(self, batch_size, gamma):
+        if not self.buffers or len(next(iter(self.buffers.values()))) == 0:
+            return {}
+
+        metrics = {}
         for agent_id, agent in self.agents.items():
             obs, act, reward, next_obs, done, next_act = self.sample(batch_size)
             # update critic
@@ -146,7 +177,14 @@ class MADDPG:
             actor_loss = -agent.critic_value(list(obs.values()), list(act.values())).mean()
             actor_loss_pse = torch.pow(logits, 2).mean()
             agent.update_actor(actor_loss + 1e-3 * actor_loss_pse)
+            metrics[agent_id] = {
+                'actorLoss': float(actor_loss.detach().cpu().item()),
+                'criticLoss': float(critic_loss.detach().cpu().item()),
+                'qValue': float(critic_value.detach().mean().cpu().item()),
+            }
             # self.logger.info(f'agent{i}: critic loss: {critic_loss.item()}, actor loss: {actor_loss.item()}')
+
+        return metrics
 
     def update_target(self, tau):
         def soft_update(from_network, to_network):
@@ -168,10 +206,31 @@ class MADDPG:
         #    pickle.dump({'rewards': reward}, f)
 
     @classmethod
-    def load(cls, dim_info, file, capacity, batch_size, actor_lr, critic_lr, device=None):
+    def load(
+        cls,
+        dim_info,
+        file,
+        capacity,
+        batch_size,
+        actor_lr,
+        critic_lr,
+        device=None,
+        hidden_dims=(64, 64),
+        optimizer_name='Adam',
+    ):
         """init maddpg using the model saved in `file`"""
         # Initialize the instance with proper parameters
-        instance = cls(dim_info, capacity, batch_size, actor_lr, critic_lr, os.path.dirname(file), device=device)
+        instance = cls(
+            dim_info,
+            capacity,
+            batch_size,
+            actor_lr,
+            critic_lr,
+            os.path.dirname(file),
+            device=device,
+            hidden_dims=hidden_dims,
+            optimizer_name=optimizer_name,
+        )
         
         # Load the saved model state
         data = torch.load(file)

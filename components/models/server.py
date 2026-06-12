@@ -9,7 +9,9 @@ class Server:
     c_cpu: float,
     c_ram: float,
     alpha: float,
-    beta: float
+    beta: float,
+    static_power: float = 0.035,
+    optimal_utilization_rate: float = 0.7
   ):
     
     self.id = id
@@ -27,6 +29,10 @@ class Server:
     self.alpha = alpha
     
     self.beta = beta
+
+    self.static_power_value = static_power
+
+    self.optimal_utilization_rate = optimal_utilization_rate
     
     self.current_cpu_usage = 0.0
     
@@ -45,12 +51,12 @@ class Server:
 
   @property
   def static_power(self):
-    return 0.035 if self.cpu_utilization_rate > 0 else 0
+    return self.static_power_value if self.cpu_utilization_rate > 0 else 0
 
   @property
   def dynamic_power(self):
     cpu_utilization_rate = self.cpu_utilization_rate
-    optimal_utilization_rate = 0.7
+    optimal_utilization_rate = self.optimal_utilization_rate
     if cpu_utilization_rate < optimal_utilization_rate:
       return round(cpu_utilization_rate * self.alpha, 2)
     return round(
