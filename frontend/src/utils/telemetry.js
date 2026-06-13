@@ -87,6 +87,8 @@ export function createDashboardTelemetry(
       wallTimeRatio: 0,
     },
     serverFarmUtilization: createEmptyHeatmap(simParams),
+    cpuSeries: [],
+    optimalRate: Number((simParams.optimalUtilizationRate ?? 0.7).toFixed(2)),
     diagnostics: [],
   }
 }
@@ -143,5 +145,12 @@ export function updateTrainingTelemetry(currentTelemetry, metric) {
       qValue: metric.qValue ?? 0,
       bufferFill: metric.bufferFill ?? 0,
     }),
+    cpuSeries: appendPoint(currentTelemetry.cpuSeries, {
+      episode: metric.episode,
+      cpuMean: metric.cpuMean ?? 0,
+      cpuMin: metric.cpuMin ?? 0,
+      cpuMax: metric.cpuMax ?? 0,
+    }),
+    optimalRate: metric.optimalRate ?? currentTelemetry.optimalRate,
   }
 }

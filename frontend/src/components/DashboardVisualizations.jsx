@@ -4,6 +4,7 @@ import AgentRewardChart from './dashboard/AgentRewardChart'
 import EnergyUsagePerTimeStepChart from './dashboard/EnergyUsagePerTimeStepChart'
 import KpiGrid from './dashboard/KpiGrid'
 import ReplayBufferChart from './dashboard/ReplayBufferChart'
+import ServerFarmCpuTrendChart from './dashboard/ServerFarmCpuTrendChart'
 import ServerFarmHeatmap from './dashboard/ServerFarmHeatmap'
 import {
   buildEvaluationKpiCards,
@@ -77,6 +78,10 @@ function TrainingVisualizations({ dashboardTelemetry }) {
       </div>
 
       <ServerFarmHeatmap data={dashboardTelemetry.serverFarmUtilization} />
+      <ServerFarmCpuTrendChart
+        data={dashboardTelemetry.cpuSeries}
+        optimalRate={dashboardTelemetry.optimalRate}
+      />
     </section>
   )
 }

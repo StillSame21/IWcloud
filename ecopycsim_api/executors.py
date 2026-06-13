@@ -14,6 +14,7 @@ from schedulers.marl.maddpg.MADDPG import MADDPG
 from ecopycsim_api.config import MODELS_DIR
 from ecopycsim_api.metrics import (
   build_average_heatmap,
+  build_cpu_trend_point,
   build_step_metric,
   capture_cpu_sample,
   get_training_phase,
@@ -257,6 +258,8 @@ def _build_episode_metric(
     'acceptedJobs': accepted_jobs,
     'jobAcceptanceRate': round_value(acceptance_rate, 2),
     'phase': get_training_phase(episode, total_episodes),
+    **build_cpu_trend_point(episode_stats['cpu_samples']),
+    'optimalRate': round_value(session.sim_params.get('optimalUtilizationRate', 0.7), 2),
   }
 
 

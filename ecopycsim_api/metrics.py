@@ -70,6 +70,34 @@ def build_average_heatmap(
   }
 
 
+def build_cpu_trend_point(cpu_samples: list[list[list[float]]]) -> dict[str, float]:
+  """Compute global-mean and per-farm min/max from a full episode's CPU samples."""
+  if not cpu_samples:
+    return {'cpuMean': 0.0, 'cpuMin': 0.0, 'cpuMax': 0.0}
+
+  farm_count = max(len(s) for s in cpu_samples)
+  farm_means: list[float] = []
+
+  for farm_idx in range(farm_count):
+    values = [
+      cpu_samples[step][farm_idx][srv_idx]
+      for step in range(len(cpu_samples))
+      if farm_idx < len(cpu_samples[step])
+      for srv_idx in range(len(cpu_samples[step][farm_idx]))
+    ]
+    if values:
+      farm_means.append(mean(values))
+
+  if not farm_means:
+    return {'cpuMean': 0.0, 'cpuMin': 0.0, 'cpuMax': 0.0}
+
+  return {
+    'cpuMean': round_value(mean(farm_means), 3),
+    'cpuMin': round_value(min(farm_means), 3),
+    'cpuMax': round_value(max(farm_means), 3),
+  }
+
+
 def build_step_metric(
   env: CloudSchedulingEnv,
   info: dict[str, Any],
@@ -214,6 +242,16 @@ def build_training_results(
     else 0
   )
 
+  cpu_series = [
+    {
+      'episode': metric['episode'],
+      'cpuMean': metric.get('cpuMean', 0),
+      'cpuMin': metric.get('cpuMin', 0),
+      'cpuMax': metric.get('cpuMax', 0),
+    }
+    for metric in episode_metrics
+  ]
+
   return {
     'episode': {
       'current': episode_metrics[-1]['episode'] if episode_metrics else 0,
@@ -222,6 +260,8 @@ def build_training_results(
     'rewardSeries': reward_series,
     'lossSeries': loss_series,
     'replaySeries': replay_series,
+    'cpuSeries': cpu_series,
+    'optimalRate': round_value(sim_params.get('optimalUtilizationRate', 0.7), 2),
     'averageEnergyByJobLoad': [
       {
         'jobs': sim_params['numberOfJobs'],
