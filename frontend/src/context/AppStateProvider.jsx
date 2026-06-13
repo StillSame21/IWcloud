@@ -6,7 +6,6 @@ import {
   upsertById,
 } from './appStateHelpers'
 import {
-  activePreset as fallbackPreset,
   backendStatus,
   defaultSimulationParams,
   defaultTrainingParams,
@@ -24,7 +23,6 @@ import {
 
 export default function AppStateProvider({ children }) {
   const streamRef = useRef(null)
-  const [activePreset, setActivePreset] = useState(fallbackPreset)
   const [runTypes, setRunTypes] = useState(fallbackRunTypes)
   const [simulationParameterFields, setSimulationParameterFields] = useState(
     fallbackSimulationFields,
@@ -33,6 +31,7 @@ export default function AppStateProvider({ children }) {
     fallbackTrainingFields,
   )
   const [selectedRunType, setSelectedRunType] = useState('random')
+  const [simParamDefaults, setSimParamDefaults] = useState(defaultSimulationParams)
   const [simParams, setSimParams] = useState(defaultSimulationParams)
   const [trainingParams, setTrainingParams] = useState(defaultTrainingParams)
   const [selectedModel, setSelectedModel] = useState('')
@@ -100,7 +99,6 @@ export default function AppStateProvider({ children }) {
           return
         }
 
-        setActivePreset(config.activePreset ?? fallbackPreset)
         setRunTypes(config.runTypes ?? fallbackRunTypes)
         setSimulationParameterFields(
           config.simulationParameterFields ?? fallbackSimulationFields,
@@ -108,6 +106,7 @@ export default function AppStateProvider({ children }) {
         setTrainingParameterFields(
           config.trainingParameterFields ?? fallbackTrainingFields,
         )
+        setSimParamDefaults(config.simulationParams ?? defaultSimulationParams)
         setSimParams(config.simulationParams ?? defaultSimulationParams)
         setTrainingParams(config.trainingParams ?? defaultTrainingParams)
         setDashboardTelemetry(
@@ -240,6 +239,10 @@ export default function AppStateProvider({ children }) {
     setTrainingParams((currentParams) => ({ ...currentParams, [key]: value }))
   }, [])
 
+  const resetSimParams = useCallback(() => {
+    setSimParams(simParamDefaults)
+  }, [simParamDefaults])
+
   const startRun = useCallback(async () => {
     if (selectedRunType === 'inference' && !selectedModel) {
       setRunStatus('error')
@@ -332,7 +335,6 @@ export default function AppStateProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      activePreset,
       activeRunId,
       backendInfo,
       checkBackend,
@@ -343,6 +345,7 @@ export default function AppStateProvider({ children }) {
       lockedSimulationFields,
       modelLockMessage,
       resetRun,
+      resetSimParams,
       resetVisualizations,
       runError,
       runHistory,
@@ -365,7 +368,6 @@ export default function AppStateProvider({ children }) {
       updateTrainingParam,
     }),
     [
-      activePreset,
       activeRunId,
       backendInfo,
       checkBackend,
@@ -376,6 +378,7 @@ export default function AppStateProvider({ children }) {
       lockedSimulationFields,
       modelLockMessage,
       resetRun,
+      resetSimParams,
       resetVisualizations,
       runError,
       runHistory,

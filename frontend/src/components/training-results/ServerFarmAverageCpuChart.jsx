@@ -15,7 +15,7 @@ import {
   chartGridStroke,
   tooltipStyle,
 } from '../../utils/chartTheme'
-import { formatNumber } from '../../utils/format'
+import { formatUtilizationRate } from '../../utils/format'
 import { getTrainingRunDisplayName } from './trainingRuns'
 
 export default function ServerFarmAverageCpuChart({ run, savedModels }) {
@@ -33,18 +33,19 @@ export default function ServerFarmAverageCpuChart({ run, savedModels }) {
           <YAxis
             domain={[0, 1]}
             label={{
-              value: 'CPU Utilization Rate',
+              value: 'Active VM Share',
               angle: -90,
               position: 'insideLeft',
               fill: '#64748b',
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatUtilizationRate}
             width={64}
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value) => formatNumber(value, 2)}
+            formatter={(value) => formatUtilizationRate(value)}
           />
           <Legend />
           <Bar

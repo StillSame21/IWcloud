@@ -79,7 +79,6 @@ function StatusHeading({ badgeLabel, children }) {
 
 export default function StatusBar() {
   const {
-    activePreset,
     backendInfo,
     lastHealthCheck,
     runError,
@@ -91,7 +90,7 @@ export default function StatusBar() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
         <StatusCard label="Engine">
           <h2 className="text-base font-semibold text-slate-950">EcoPyCSIM</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -113,15 +112,6 @@ export default function StatusBar() {
           </StatusHeading>
           <p className="text-sm text-slate-500">
             {runError ?? runStatusCopy.text}
-          </p>
-        </StatusCard>
-
-        <StatusCard label="Active Preset">
-          <h2 className="text-base font-semibold text-slate-950">
-            {activePreset}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Current environment preset
           </p>
         </StatusCard>
       </div>

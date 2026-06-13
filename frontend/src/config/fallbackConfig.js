@@ -7,8 +7,6 @@ export const backendStatus = {
   trainingStatus: 'Idle',
 }
 
-export const activePreset = 'Normal'
-
 export const fallbackRunTypes = [
   {
     id: 'random',
@@ -50,7 +48,7 @@ export const defaultTrainingParams = {
   networkArchitecture: 'MLP(64,64)',
   memorySize: 100000,
   batchSize: 1024,
-  randomSteps: 'jobs × 0.1',
+  randomSteps: 0.1,
   criticLearningRate: 0.0005,
   actorLearningRate: 0.0005,
   discountFactor: 0.9,
@@ -150,8 +148,10 @@ export const trainingParameterFields = [
   {
     key: 'randomSteps',
     label: 'Random Steps',
-    control: 'text',
-    hint: 'Formula hint',
+    control: 'number',
+    min: 0,
+    step: 0.1,
+    hint: 'Multiplied by Number of Jobs',
   },
   {
     key: 'criticLearningRate',
