@@ -15,7 +15,7 @@ from ecopycsim_api.config import MODELS_DIR
 from ecopycsim_api.metrics import (
   build_average_heatmap,
   build_step_metric,
-  capture_cpu_sample,
+  capture_vm_occupancy_sample,
   get_training_phase,
   round_value,
   summarize_metrics,
@@ -107,7 +107,7 @@ async def run_evaluation(runner, session: RunSession) -> None:
 
     obs, _reward, terminated, truncated, info = env.step(actions)
     step += 1
-    cpu_samples.append(capture_cpu_sample(env))
+    cpu_samples.append(capture_vm_occupancy_sample(env))
     metric = build_step_metric(env, info, step)
     session.live_metrics.append(metric)
     await session.publish('step_metric', {'metric': metric})
@@ -163,7 +163,7 @@ async def _run_training_episode(
       actions = maddpg.select_action(obs)
 
     next_obs, reward, terminated, truncated, info = env.step(actions)
-    cpu_samples.append(capture_cpu_sample(env))
+    cpu_samples.append(capture_vm_occupancy_sample(env))
     done = {
       agent_id: terminated[agent_id] or truncated[agent_id]
       for agent_id in env.agents

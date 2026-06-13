@@ -28,6 +28,7 @@ export default function RunTypePanel({ layout = 'default' }) {
     lockedSimulationFields,
     modelLockMessage,
     resetRun,
+    resetSimParams,
     resetVisualizations,
     runTypes,
     savedModels,
@@ -125,6 +126,7 @@ export default function RunTypePanel({ layout = 'default' }) {
             layout={parameterLayout}
             params={simParams}
             onParamChange={updateSimParam}
+            onResetParams={resetSimParams}
           />
         ) : null}
 

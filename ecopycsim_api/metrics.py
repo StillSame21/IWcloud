@@ -24,10 +24,14 @@ def get_training_phase(episode: int, total_episodes: int) -> str:
   return 'Stable'
 
 
-def capture_cpu_sample(env: CloudSchedulingEnv) -> list[list[float]]:
+def capture_vm_occupancy_sample(env: CloudSchedulingEnv) -> list[list[float]]:
+  """Busy-VM share per server (busy VMs / total VMs), the DRL-Cloud
+  busy-cores/total-cores notion. The raw ``cpu_utilization_rate`` stays in the
+  energy model but is too small to visualize (single-digit percents at best)."""
   return [
     [
-      round_value(server.cpu_utilization_rate, 2)
+      sum(1 for vm in server.vms.values() if vm.status == 1)
+      / max(len(server.vms), 1)
       for server in server_farm.servers.values()
     ]
     for server_farm in env.server_farms.values()
@@ -55,10 +59,14 @@ def build_average_heatmap(
     farm_values = []
 
     for server_index in range(server_count):
+      # Average over the active window only: idle steps (value 0) would
+      # otherwise dilute the figure to near zero on lightly loaded runs.
       server_samples = [
         sample[farm_index][server_index]
         for sample in samples
-        if farm_index < len(sample) and server_index < len(sample[farm_index])
+        if farm_index < len(sample)
+        and server_index < len(sample[farm_index])
+        and sample[farm_index][server_index] > 0
       ]
       farm_values.append(round_value(mean(server_samples), 2) if server_samples else 0)
 

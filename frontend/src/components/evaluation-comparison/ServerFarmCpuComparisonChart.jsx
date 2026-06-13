@@ -15,7 +15,7 @@ import {
   chartGridStroke,
   tooltipStyle,
 } from '../../utils/chartTheme'
-import { formatNumber } from '../../utils/format'
+import { formatUtilizationRate } from '../../utils/format'
 import { getRunChartColor, getRunDisplayName } from './evaluationRuns'
 
 export default function ServerFarmCpuComparisonChart({ data, selectedRuns }) {
@@ -31,18 +31,19 @@ export default function ServerFarmCpuComparisonChart({ data, selectedRuns }) {
           <YAxis
             domain={[0, 1]}
             label={{
-              value: 'CPU Utilization Rate',
+              value: 'Active VM Share',
               angle: -90,
               position: 'insideLeft',
               fill: '#64748b',
             }}
             stroke={axisStroke}
             tick={axisTick}
+            tickFormatter={formatUtilizationRate}
             width={64}
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value) => formatNumber(value, 2)}
+            formatter={(value) => formatUtilizationRate(value)}
           />
           <Legend />
           {selectedRuns.map((run, index) => (
