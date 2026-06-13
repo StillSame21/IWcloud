@@ -4,7 +4,7 @@ React + Vite dashboard for configuring, running, and viewing EcoPyCSIM/MADDPG ex
 
 ## Run
 
-```bash
+```bash (while in folder frontend)
 npm install
 npm run dev
 ```

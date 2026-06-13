@@ -81,7 +81,7 @@ def normalize_training_params(params: dict[str, Any] | None) -> dict[str, Any]:
   resolved['tau'] = _coerce_float(resolved.get('tau'), 0.1, 0)
   resolved['optimizer'] = resolved.get('optimizer') or 'Adam'
   resolved['networkArchitecture'] = resolved.get('networkArchitecture') or 'MLP(64,64)'
-  resolved['randomSteps'] = resolved.get('randomSteps') or 'jobs x 0.1'
+  resolved['randomSteps'] = _coerce_float(resolved.get('randomSteps'), 0.1, 0)
   return resolved
 
 
@@ -91,16 +91,15 @@ def parse_hidden_dims(network_architecture: str) -> tuple[int, ...]:
 
 
 def parse_random_steps(value: Any, number_of_jobs: int) -> int:
+  """Resolve the random-steps multiplier into an absolute step count.
+
+  ``value`` is a multiplier applied to the number of jobs. Legacy text values
+  such as ``'jobs x 0.1'`` (stored in older saved models) are parsed for their
+  numeric part and treated the same way.
+  """
   if isinstance(value, (int, float)):
-    return max(0, int(value))
+    return max(0, int(number_of_jobs * float(value)))
 
-  text = str(value or '').lower().replace('x', '*')
-  multiplier_match = re.search(r'jobs\s*\*\s*([0-9.]+)', text)
-  if multiplier_match:
-    return max(0, int(number_of_jobs * float(multiplier_match.group(1))))
-
-  number_match = re.search(r'[0-9.]+', text)
-  if number_match:
-    return max(0, int(float(number_match.group(0))))
-
-  return max(0, int(number_of_jobs * 0.1))
+  number_match = re.search(r'[0-9.]+', str(value or ''))
+  multiplier = float(number_match.group(0)) if number_match else 0.1
+  return max(0, int(number_of_jobs * multiplier))

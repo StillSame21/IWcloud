@@ -34,7 +34,7 @@ DEFAULT_TRAINING_PARAMS: dict[str, Any] = {
   'networkArchitecture': 'MLP(64,64)',
   'memorySize': 100000,
   'batchSize': 1024,
-  'randomSteps': 'jobs x 0.1',
+  'randomSteps': 0.1,
   'criticLearningRate': 0.0005,
   'actorLearningRate': 0.0005,
   'discountFactor': 0.9,
@@ -140,8 +140,10 @@ TRAINING_PARAMETER_FIELDS: list[dict[str, Any]] = [
   {
     'key': 'randomSteps',
     'label': 'Random Steps',
-    'control': 'text',
-    'hint': 'Example: jobs x 0.1',
+    'control': 'number',
+    'min': 0,
+    'step': 0.1,
+    'hint': 'Multiplied by Number of Jobs',
   },
   {
     'key': 'criticLearningRate',

@@ -24,7 +24,7 @@ function getUtilizationClass(value) {
 
 export default function ServerFarmHeatmap({
   data,
-  title = 'Server Farm CPU Utilisation Snapshot',
+  title = 'Server Farm CPU Utilisation (Active VM Share)',
 }) {
   const farms = data?.farms ?? []
   const maxServerCount = Math.max(
@@ -61,7 +61,7 @@ export default function ServerFarmHeatmap({
                     )}`}
                     title={`Farm ${farmIndex + 1}, server ${
                       serverIndex + 1
-                    }: ${formatUtilizationRate(value)} CPU utilization rate`}
+                    }: ${formatUtilizationRate(value)} of VMs busy while active`}
                   >
                     {formatUtilizationRate(value)}
                   </span>

@@ -9,8 +9,5 @@ export function formatPercent(value) {
 }
 
 export function formatUtilizationRate(value) {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value ?? 0)
+  return `${Math.round((value ?? 0) * 100)}%`
 }

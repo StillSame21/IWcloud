@@ -42,7 +42,6 @@ class DashboardRunner:
 
   def config(self) -> dict[str, Any]:
     return {
-      'activePreset': 'Backend',
       'runTypes': RUN_TYPES,
       'simulationParams': DEFAULT_SIMULATION_PARAMS,
       'trainingParams': DEFAULT_TRAINING_PARAMS,
