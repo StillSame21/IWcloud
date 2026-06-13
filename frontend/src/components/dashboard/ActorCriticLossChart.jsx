@@ -23,7 +23,7 @@ export default function ActorCriticLossChart({ data }) {
     'farmCritic',
     'serverActor',
     'serverCritic',
-  ], { zeroMin: true })
+  ])
 
   return (
     <ChartCard title="Actor and Critic Loss">

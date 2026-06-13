@@ -5,7 +5,6 @@ import EnergyUsagePerTimeStepChart from './dashboard/EnergyUsagePerTimeStepChart
 import KpiGrid from './dashboard/KpiGrid'
 import ReplayBufferChart from './dashboard/ReplayBufferChart'
 import ServerFarmHeatmap from './dashboard/ServerFarmHeatmap'
-import TrainingPhaseTimeline from './dashboard/TrainingPhaseTimeline'
 import {
   buildEvaluationKpiCards,
   buildTrainingKpiCards,
@@ -37,7 +36,6 @@ function TrainingDashboardOverview({ dashboardTelemetry }) {
   return (
     <section className="space-y-6">
       <KpiGrid cards={kpiCards} />
-      <TrainingPhaseTimeline timeline={dashboardTelemetry.phaseTimeline} />
     </section>
   )
 }

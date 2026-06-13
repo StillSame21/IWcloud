@@ -22,7 +22,7 @@ export default function ActorCriticLossChart({ run, savedModels }) {
   const yDomain = getAdaptiveDomain(run.trainingResults.lossSeries, [
     'actorLoss',
     'criticLoss',
-  ], { zeroMin: true })
+  ])
 
   return (
     <ChartCard

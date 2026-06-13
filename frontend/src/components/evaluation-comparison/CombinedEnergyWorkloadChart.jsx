@@ -20,16 +20,12 @@ import { formatNumber } from '../../utils/format'
 import { getRunChartColor, getRunDisplayName } from './evaluationRuns'
 
 export default function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
-  const energyKeys = selectedRuns.map((run) => `${run.id}-energy`)
-  const priceKeys = selectedRuns.map((run) => `${run.id}-price`)
-  const energyDomain = getAdaptiveDomain(data, energyKeys, {
-    zeroMin: true,
-  })
-  const priceDomain = getAdaptiveDomain(data, priceKeys, { zeroMin: true })
+  const energyKeys = selectedRuns.map((run) => `${run.id}`)
+  const energyDomain = getAdaptiveDomain(data, energyKeys, { zeroMin: true })
 
   return (
     <ChartCard
-      title="Energy Usage and Price Per Workload / Number of Jobs"
+      title="Average Energy Usage Per Workload / Number of Jobs"
       bodyClass="mt-4 h-[28rem]"
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -37,7 +33,7 @@ export default function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
           data={data}
           barCategoryGap="10%"
           barGap={2}
-          margin={{ top: 12, right: 52, bottom: 76, left: 16 }}
+          margin={{ top: 12, right: 24, bottom: 76, left: 16 }}
         >
           <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 4" />
           <XAxis
@@ -53,10 +49,9 @@ export default function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
             tick={axisTick}
           />
           <YAxis
-            yAxisId="energy"
             domain={energyDomain}
             label={{
-              value: 'Energy Usage',
+              value: 'Average Energy Usage',
               angle: -90,
               position: 'insideLeft',
               fill: '#64748b',
@@ -66,27 +61,9 @@ export default function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
             tickFormatter={formatAdaptiveTick}
             width={76}
           />
-          <YAxis
-            yAxisId="price"
-            orientation="right"
-            domain={priceDomain}
-            label={{
-              value: 'Energy Price',
-              angle: 90,
-              position: 'insideRight',
-              fill: '#64748b',
-            }}
-            stroke={axisStroke}
-            tick={axisTick}
-            tickFormatter={formatAdaptiveTick}
-            width={76}
-          />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value, name) => [
-              formatNumber(value, 2),
-              name,
-            ]}
+            formatter={(value, name) => [formatNumber(value, 2), name]}
           />
           <Legend
             verticalAlign="bottom"
@@ -94,25 +71,10 @@ export default function CombinedEnergyWorkloadChart({ data, selectedRuns }) {
           />
           {selectedRuns.map((run, index) => (
             <Bar
-              key={`${run.id}-energy`}
-              yAxisId="energy"
-              dataKey={`${run.id}-energy`}
-              name={`${getRunDisplayName(run)} energy usage`}
+              key={run.id}
+              dataKey={run.id}
+              name={getRunDisplayName(run)}
               fill={getRunChartColor(index)}
-              radius={[6, 6, 0, 0]}
-              isAnimationActive={false}
-            />
-          ))}
-          {selectedRuns.map((run, index) => (
-            <Bar
-              key={`${run.id}-price`}
-              yAxisId="price"
-              dataKey={`${run.id}-price`}
-              name={`${getRunDisplayName(run)} energy price`}
-              fill={getRunChartColor(index)}
-              fillOpacity={0.42}
-              stroke={getRunChartColor(index)}
-              strokeWidth={1.5}
               radius={[6, 6, 0, 0]}
               isAnimationActive={false}
             />

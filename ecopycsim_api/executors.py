@@ -216,7 +216,7 @@ def _build_episode_metric(
   smoothing_window = rewards_for_smoothing[-10:]
 
   rejected_jobs = env.num_rejected_jobs
-  accepted_jobs = max(session.sim_params['numberOfJobs'] - rejected_jobs, 0)
+  accepted_jobs = env.num_completed_jobs
   acceptance_rate = (
     (accepted_jobs / session.sim_params['numberOfJobs']) * 100
     if session.sim_params['numberOfJobs']

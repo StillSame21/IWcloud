@@ -3,7 +3,6 @@ import {
   Legend,
   Line,
   LineChart,
-  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -40,14 +39,6 @@ export default function AgentRewardChart({ data }) {
           />
           <Tooltip contentStyle={tooltipStyle} />
           <Legend />
-          <ReferenceArea
-            x1={60}
-            x2={90}
-            y1={-600}
-            y2={-180}
-            fill="#ef4444"
-            fillOpacity={0.08}
-          />
           <Line
             type="linear"
             dataKey="farmReward"

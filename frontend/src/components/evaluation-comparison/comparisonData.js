@@ -1,5 +1,5 @@
 import { getMetricEnergy, getMetricStep } from '../../utils/runMetrics'
-import { energyPriceFactor, getWorkloadJobs } from './evaluationRuns'
+import { getWorkloadJobs } from './evaluationRuns'
 
 export function buildEnergyPerTimeStepData(selectedRuns) {
   const timeSteps = [
@@ -53,22 +53,8 @@ export function buildEnergyWorkloadData(selectedRuns) {
   return buildWorkloadComparisonData(
     selectedRuns,
     (run) => run.evaluationResults.averageEnergyByJobLoad,
-    (point, run) => ({
-      [`${run.id}-energy`]: point.averageEnergy,
-      [`${run.id}-price`]: Number((point.averageEnergy * energyPriceFactor).toFixed(2)),
-    }),
-  ).map((row) => {
-    const nextRow = { jobs: row.jobs, workload: row.workload }
-
-    selectedRuns.forEach((run) => {
-      const values = row[run.id]
-
-      nextRow[`${run.id}-energy`] = values?.[`${run.id}-energy`]
-      nextRow[`${run.id}-price`] = values?.[`${run.id}-price`]
-    })
-
-    return nextRow
-  })
+    (point) => point.averageEnergy,
+  )
 }
 
 export function buildWallTimePerWorkloadData(selectedRuns) {
