@@ -201,7 +201,7 @@ def build_evaluation_results(
       {
         'jobs': sim_params['numberOfJobs'],
         'workload': workload_label,
-        'averageWallTime': round_value(final_wall_time, 3),
+        'finalWallTime': round_value(final_wall_time, 3),
       },
     ],
     'serverFarmAverageCpu': build_server_farm_average_cpu(heatmap),

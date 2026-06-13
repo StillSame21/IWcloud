@@ -26,7 +26,7 @@ export default function WallTimePerWorkloadChart({ data, selectedRuns }) {
 
   return (
     <ChartCard
-      title="Wall Time Per Workload / Number of Jobs"
+      title="Final Wall Time Per Workload / Number of Jobs"
       bodyClass="mt-4 h-[24rem]"
     >
       <ResponsiveContainer width="100%" height="100%">

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import ActorCriticLossChart from './dashboard/ActorCriticLossChart'
 import AgentRewardChart from './dashboard/AgentRewardChart'
 import EnergyUsagePerTimeStepChart from './dashboard/EnergyUsagePerTimeStepChart'
+import JobProgressChart from './dashboard/JobProgressChart'
 import KpiGrid from './dashboard/KpiGrid'
 import ReplayBufferChart from './dashboard/ReplayBufferChart'
 import ServerFarmCpuTrendChart from './dashboard/ServerFarmCpuTrendChart'
@@ -25,6 +26,15 @@ function buildEnergyUsageSeries(liveMetrics) {
   return liveMetrics.map((metric, index) => ({
     timeStep: getMetricStep(metric, index),
     energyUsage: getMetricEnergyUsage(metric),
+  }))
+}
+
+function buildJobProgressSeries(liveMetrics) {
+  return liveMetrics.map((metric, index) => ({
+    timeStep: getMetricStep(metric, index),
+    acceptedJobs: metric?.acceptedJobs ?? 0,
+    activeJobs: metric?.activeJobs ?? 0,
+    rejectedJobs: metric?.rejectedJobs ?? 0,
   }))
 }
 
@@ -91,10 +101,17 @@ function EvaluationVisualizations({ dashboardTelemetry, liveMetrics }) {
     () => buildEnergyUsageSeries(liveMetrics),
     [liveMetrics],
   )
+  const jobProgressSeries = useMemo(
+    () => buildJobProgressSeries(liveMetrics),
+    [liveMetrics],
+  )
 
   return (
     <section className="space-y-6">
-      <EnergyUsagePerTimeStepChart data={energyUsageSeries} />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <EnergyUsagePerTimeStepChart data={energyUsageSeries} />
+        <JobProgressChart data={jobProgressSeries} />
+      </div>
       <ServerFarmHeatmap
         data={dashboardTelemetry.serverFarmUtilization}
         title="Server Farm CPU Utilisation Heatmap"

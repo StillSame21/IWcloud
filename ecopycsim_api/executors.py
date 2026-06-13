@@ -112,6 +112,9 @@ async def run_evaluation(runner, session: RunSession) -> None:
     metric = build_step_metric(env, info, step)
     session.live_metrics.append(metric)
     await session.publish('step_metric', {'metric': metric})
+    if step % 20 == 0:
+      interim_heatmap = build_average_heatmap(cpu_samples, session.sim_params)
+      await session.publish('heatmap', {'heatmap': interim_heatmap})
     await asyncio.sleep(EVENT_PUBLISH_DELAY_SECONDS)
 
     done = {

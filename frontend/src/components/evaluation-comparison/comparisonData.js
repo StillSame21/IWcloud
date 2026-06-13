@@ -61,7 +61,7 @@ export function buildWallTimePerWorkloadData(selectedRuns) {
   return buildWorkloadComparisonData(
     selectedRuns,
     (run) => run.evaluationResults.wallTimeByJobLoad,
-    (point) => point.averageWallTime,
+    (point) => point.finalWallTime ?? point.averageWallTime,
   )
 }
 

@@ -38,9 +38,8 @@ export function buildEvaluationKpiCards({
   const currentEpisode = liveMetrics.length
     ? getMetricEpisode(lastMetric, liveMetrics.length - 1)
     : 0
-  const rejectedJobs = lastMetric?.rejectedJobs ?? 0
   const totalJobs = simParams.numberOfJobs ?? 0
-  const acceptedJobs = Math.max(totalJobs - rejectedJobs, 0)
+  const acceptedJobs = lastMetric?.acceptedJobs ?? 0
   const acceptanceRate =
     totalJobs > 0 ? (acceptedJobs / totalJobs) * 100 : 0
   const wallTime = getMetricWallTime(lastMetric)
@@ -54,8 +53,8 @@ export function buildEvaluationKpiCards({
 
   return [
     {
-      id: 'episode',
-      label: 'Episode',
+      id: 'step',
+      label: 'Step',
       value: formatNumber(currentEpisode, 0),
       helper: episodeHelper,
       tone: 'sky',
@@ -74,6 +73,7 @@ export function buildEvaluationKpiCards({
       id: 'wall-time',
       label: 'Wall Time',
       value: `${formatNumber(wallTime, 3)}s`,
+      helper: 'Simulation time elapsed',
       tone: 'sky',
     },
   ]
