@@ -1,11 +1,7 @@
 import MetricRow from '../shared/MetricRow'
 import SectionTitle from '../shared/SectionTitle'
 import { tableHeadingClass } from '../../utils/chartTheme'
-import { formatNumber, formatPercent } from '../../utils/format'
-import {
-  getJobAcceptanceRate,
-  getJobAcceptanceSummary,
-} from '../../utils/runMetrics'
+import { formatNumber } from '../../utils/format'
 import { getRunModelName, getTrainingRunDisplayName } from './trainingRuns'
 
 function TableSection({ columnCount, label }) {
@@ -84,31 +80,9 @@ export default function ComparisonTable({ savedModels, selectedRuns }) {
 
             <TableSection label="Episode" columnCount={selectedRuns.length + 1} />
             <MetricRow
-              label="Current Episode"
-              selectedRuns={selectedRuns}
-              getValue={(run) =>
-                formatNumber(run.trainingResults.episode.current, 0)
-              }
-            />
-            <MetricRow
               label="Total Episodes"
               selectedRuns={selectedRuns}
               getValue={(run) => formatNumber(run.trainingResults.episode.total, 0)}
-            />
-
-            <TableSection
-              label="Job Acceptance Rate"
-              columnCount={selectedRuns.length + 1}
-            />
-            <MetricRow
-              label="Job Acceptance Rate"
-              selectedRuns={selectedRuns}
-              getValue={(run) => formatPercent(getJobAcceptanceRate(run))}
-            />
-            <MetricRow
-              label="Accepted Jobs"
-              selectedRuns={selectedRuns}
-              getValue={getJobAcceptanceSummary}
             />
           </tbody>
         </table>

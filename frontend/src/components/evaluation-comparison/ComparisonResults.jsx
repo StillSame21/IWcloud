@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import CombinedEnergyWorkloadChart from './CombinedEnergyWorkloadChart'
 import ConfigurationTable from './ConfigurationTable'
 import EnergyPerTimeStepChart from './EnergyPerTimeStepChart'
-import JobAcceptanceRateCard from './JobAcceptanceRateCard'
+import CompletedJobRateCard from './CompletedJobRateCard'
 import ServerFarmCpuComparisonChart from './ServerFarmCpuComparisonChart'
 import WallTimePerWorkloadChart from './WallTimePerWorkloadChart'
 import {
@@ -38,7 +38,7 @@ export default function ComparisonResults({ selectedRuns }) {
         selectedRuns={selectedRuns}
       />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <JobAcceptanceRateCard selectedRuns={selectedRuns} />
+        <CompletedJobRateCard selectedRuns={selectedRuns} />
         <WallTimePerWorkloadChart
           data={wallTimePerWorkloadData}
           selectedRuns={selectedRuns}

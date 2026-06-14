@@ -2,29 +2,28 @@ import SectionTitle from '../shared/SectionTitle'
 import { cardClass } from '../../utils/chartTheme'
 import { formatNumber, formatPercent } from '../../utils/format'
 import {
-  getJobAcceptanceRate,
-  getJobAcceptanceSummary,
+  getCompletedJobRate,
+  getCompletedJobSummary,
+  getCompletedJobs,
 } from '../../utils/runMetrics'
 import { getRunChartColor, getRunDisplayName } from './evaluationRuns'
 
-function getEnergyPerAcceptedJob(run) {
+function getEnergyPerCompletedJob(run) {
   const totalEnergy = run.summary?.totalEnergy ?? 0
-  const totalJobs = run.parameters?.numberOfJobs ?? 0
-  const rejectedJobs = run.summary?.rejectedJobs ?? 0
-  const acceptedJobs = Math.max(totalJobs - rejectedJobs, 0)
-  if (acceptedJobs === 0) return null
-  return totalEnergy / acceptedJobs
+  const completedJobs = getCompletedJobs(run)
+  if (completedJobs === 0) return null
+  return totalEnergy / completedJobs
 }
 
-export default function JobAcceptanceRateCard({ selectedRuns }) {
+export default function CompletedJobRateCard({ selectedRuns }) {
   return (
     <section
       className={`${cardClass} min-h-[420px] border-l-4 border-l-emerald-500`}
     >
-      <SectionTitle title="Job Acceptance Rate" />
+      <SectionTitle title="Completed Job %" />
       <div className="mt-6 space-y-5">
         {selectedRuns.map((run, index) => {
-          const energyPerJob = getEnergyPerAcceptedJob(run)
+          const energyPerJob = getEnergyPerCompletedJob(run)
           return (
             <div key={run.id} className="rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -33,7 +32,7 @@ export default function JobAcceptanceRateCard({ selectedRuns }) {
                     {getRunDisplayName(run)}
                   </p>
                   <p className="mt-1 text-xs font-medium text-slate-500">
-                    {getJobAcceptanceSummary(run)} jobs accepted
+                    {getCompletedJobSummary(run)} jobs completed
                   </p>
                 </div>
                 <span
@@ -42,11 +41,11 @@ export default function JobAcceptanceRateCard({ selectedRuns }) {
                 />
               </div>
               <p className="mt-4 text-3xl font-semibold text-slate-950">
-                {formatPercent(getJobAcceptanceRate(run))}
+                {formatPercent(getCompletedJobRate(run))}
               </p>
               {energyPerJob !== null ? (
                 <p className="mt-2 text-xs font-medium text-slate-500">
-                  {formatNumber(energyPerJob, 4)} energy per accepted job
+                  {formatNumber(energyPerJob, 4)} energy per completed job
                 </p>
               ) : null}
             </div>

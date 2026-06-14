@@ -111,6 +111,7 @@ def build_step_metric(
   info: dict[str, Any],
   step: int,
   episode: int = 1,
+  cumulative_energy: float = 0.0,
 ) -> dict[str, Any]:
   server_farm_info = info.get('server_farm', {})
   rejected_jobs = len(server_farm_info.get('rejected_job_ids', []))
@@ -125,6 +126,7 @@ def build_step_metric(
     'stepTime': wall_time,
     'energyCost': energy_cost,
     'totalEnergyCost': energy_cost,
+    'cumulativeEnergy': round_value(cumulative_energy, 4),
     'rejectedJobs': rejected_jobs,
     'rejectedTasks': rejected_tasks,
     'acceptedJobs': env.num_completed_jobs,
@@ -146,7 +148,9 @@ def summarize_metrics(metrics: list[dict[str, Any]], parameters: dict[str, Any])
     }
 
   final_point = metrics[-1]
-  total_energy = sum(metric.get('totalEnergyCost', metric.get('energyCost', 0)) for metric in metrics)
+  total_energy = final_point.get('cumulativeEnergy') or sum(
+    metric.get('totalEnergyCost', metric.get('energyCost', 0)) for metric in metrics
+  )
   accepted_jobs = final_point.get(
     'acceptedJobs',
     max(parameters.get('numberOfJobs', 0) - final_point.get('rejectedJobs', 0), 0),
@@ -181,7 +185,7 @@ def build_evaluation_results(
   sim_params: dict[str, Any],
   heatmap: dict[str, Any] | None,
 ) -> dict[str, Any]:
-  average_energy = round_value(mean(metric.get('totalEnergyCost', 0) for metric in metrics), 4) if metrics else 0
+  average_energy = round_value(metrics[-1].get('cumulativeEnergy', 0), 4) if metrics else 0
   final_wall_time = metrics[-1].get('wallTime', 0) if metrics else 0
   workload_label = f"{sim_params['numberOfJobs']} jobs"
 

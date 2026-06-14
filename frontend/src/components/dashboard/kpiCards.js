@@ -18,10 +18,10 @@ export function buildTrainingKpiCards(kpis) {
       tone: 'emerald',
     },
     {
-      id: 'job-acceptance',
-      label: 'Job Acceptance',
-      value: `${kpis.jobAcceptance.value}%`,
-      helper: kpis.jobAcceptance.helper,
+      id: 'completed-job',
+      label: 'Completed Job %',
+      value: `${kpis.completedJob.value}%`,
+      helper: kpis.completedJob.helper,
       tone: 'emerald',
     },
   ]
@@ -40,9 +40,11 @@ export function buildEvaluationKpiCards({
     : 0
   const totalJobs = simParams.numberOfJobs ?? 0
   const acceptedJobs = lastMetric?.acceptedJobs ?? 0
-  const acceptanceRate =
-    totalJobs > 0 ? (acceptedJobs / totalJobs) * 100 : 0
+  const completedJobs = lastMetric?.completedJobs ?? 0
+  const completionRate = totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0
   const wallTime = getMetricWallTime(lastMetric)
+  const cumulativeEnergy = lastMetric?.cumulativeEnergy ?? 0
+  const pricePerJob = acceptedJobs > 0 ? cumulativeEnergy / acceptedJobs : 0
   const selectedModelName = savedModels.find(
     (model) => model.id === selectedModel,
   )?.name
@@ -53,20 +55,20 @@ export function buildEvaluationKpiCards({
 
   return [
     {
-      id: 'step',
-      label: 'Step',
+      id: 'episode',
+      label: 'Episode',
       value: formatNumber(currentEpisode, 0),
       helper: episodeHelper,
       tone: 'sky',
     },
     {
-      id: 'job-acceptance-rate',
-      label: 'Job Acceptance Rate',
-      value: `${formatNumber(acceptanceRate, 1)}%`,
-      helper: `${formatNumber(acceptedJobs, 0)}/${formatNumber(
+      id: 'completed-job-pct',
+      label: 'Completed Job %',
+      value: `${formatNumber(completionRate, 1)}%`,
+      helper: `${formatNumber(completedJobs, 0)}/${formatNumber(
         totalJobs,
         0,
-      )} jobs accepted`,
+      )} jobs completed`,
       tone: 'emerald',
     },
     {
@@ -75,6 +77,13 @@ export function buildEvaluationKpiCards({
       value: `${formatNumber(wallTime, 3)}s`,
       helper: 'Simulation time elapsed',
       tone: 'sky',
+    },
+    {
+      id: 'price-per-job',
+      label: 'Avg Price per Job',
+      value: formatNumber(pricePerJob, 2),
+      helper: 'Avg cost per completed job',
+      tone: 'emerald',
     },
   ]
 }

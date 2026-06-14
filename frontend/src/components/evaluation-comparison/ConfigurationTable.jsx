@@ -2,7 +2,7 @@ import MetricRow from '../shared/MetricRow'
 import SectionTitle from '../shared/SectionTitle'
 import { tableHeadingClass } from '../../utils/chartTheme'
 import { formatNumber, formatPercent } from '../../utils/format'
-import { getJobAcceptanceSummary } from '../../utils/runMetrics'
+import { getCompletedJobSummary } from '../../utils/runMetrics'
 import { getRunDisplayName } from './evaluationRuns'
 
 export default function ConfigurationTable({ selectedRuns }) {
@@ -69,9 +69,9 @@ export default function ConfigurationTable({ selectedRuns }) {
               }
             />
             <MetricRow
-              label="Accepted Jobs"
+              label="Completed Jobs"
               selectedRuns={selectedRuns}
-              getValue={getJobAcceptanceSummary}
+              getValue={getCompletedJobSummary}
             />
           </tbody>
         </table>

@@ -67,7 +67,7 @@ export function createDashboardTelemetry(
         value: 'Waiting',
         helper: 'No training episode completed',
       },
-      jobAcceptance: {
+      completedJob: {
         value: 0,
         helper: 'Waiting for completed episodes',
       },
@@ -95,11 +95,12 @@ export function createDashboardTelemetry(
 
 export function updateTrainingTelemetry(currentTelemetry, metric) {
   const totalEpisodes = metric.totalEpisodes ?? currentTelemetry.kpis.episode.total
-  const acceptedJobs = metric.acceptedJobs ?? 0
-  const totalJobs = acceptedJobs + (metric.rejectedJobs ?? 0)
-  const acceptanceHelper =
+  const completedJobs = metric.completedJobs ?? metric.acceptedJobs ?? 0
+  const totalJobs = completedJobs + (metric.rejectedJobs ?? 0)
+  const completedRate = totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0
+  const completedHelper =
     totalJobs > 0
-      ? `${acceptedJobs}/${totalJobs} jobs accepted`
+      ? `${completedJobs}/${totalJobs} jobs completed`
       : 'Waiting for job outcomes'
   const farmLosses = metric.losses?.server_farm ?? {}
   const serverLosses = metric.losses?.server ?? {}
@@ -117,9 +118,9 @@ export function updateTrainingTelemetry(currentTelemetry, metric) {
         value: metric.phase ?? 'Training',
         helper: 'Updated after completed episode',
       },
-      jobAcceptance: {
-        value: metric.jobAcceptanceRate ?? 0,
-        helper: acceptanceHelper,
+      completedJob: {
+        value: completedRate,
+        helper: completedHelper,
       },
       averageEnergyUsage: {
         value: metric.totalEnergyCost ?? 0,

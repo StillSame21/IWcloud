@@ -1,7 +1,7 @@
 import RunSelectorCard from '../shared/RunSelectorCard'
 import SelectorStat from '../shared/SelectorStat'
 import { formatNumber, formatPercent } from '../../utils/format'
-import { getJobAcceptanceRate } from '../../utils/runMetrics'
+import { getCompletedJobRate } from '../../utils/runMetrics'
 import {
   getAverageElectricityPricePerEpisode,
   getAverageEnergyPerEpisode,
@@ -47,8 +47,8 @@ export default function RunSelectorGrid({
               value={formatNumber(getAverageElectricityPricePerEpisode(run), 2)}
             />
             <SelectorStat
-              label="Job Acceptance"
-              value={formatPercent(getJobAcceptanceRate(run))}
+              label="Completed Job %"
+              value={formatPercent(getCompletedJobRate(run))}
             />
           </RunSelectorCard>
         )

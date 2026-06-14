@@ -61,26 +61,3 @@ export function buildEnergyWallTimeComparisonData(selectedRuns) {
   })
 }
 
-export function buildAverageEnergyComparisonData(selectedRuns) {
-  const workloads = [
-    ...new Set(
-      selectedRuns.flatMap((run) =>
-        run.trainingResults.averageEnergyByJobLoad.map((point) => point.workload),
-      ),
-    ),
-  ]
-
-  return workloads.map((workload) => {
-    const row = { workload }
-
-    selectedRuns.forEach((run) => {
-      const point = run.trainingResults.averageEnergyByJobLoad.find(
-        (item) => item.workload === workload,
-      )
-
-      row[run.id] = point?.averageEnergy
-    })
-
-    return row
-  })
-}

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import ComparisonResults from './evaluation-comparison/ComparisonResults'
-import EvaluationOverview from './evaluation-comparison/EvaluationOverview'
 import RunSelectorGrid from './evaluation-comparison/RunSelectorGrid'
 import {
   getEvaluationRuns,
@@ -49,7 +48,6 @@ export default function ComparisonPage() {
           `${evaluationRuns.length} evaluation runs`,
         ]}
       />
-      <EvaluationOverview selectedRuns={selectedRuns} />
       <RunSelectorGrid
         evaluationRuns={evaluationRuns}
         selectedRunIds={selectedRunIds}

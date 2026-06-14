@@ -33,20 +33,25 @@ export function getRejectedJobs(run) {
   return run.summary.rejectedJobs ?? run.summary.rejectedTasks ?? 0
 }
 
-export function getJobAcceptanceRate(run) {
+export function getCompletedJobs(run) {
+  const fromSummary = run.summary?.completedJobs ?? run.summary?.acceptedJobs
+  if (Number.isFinite(fromSummary)) return Math.max(fromSummary, 0)
   const totalJobs = run.parameters.numberOfJobs ?? 0
-
-  if (totalJobs === 0) {
-    return 0
-  }
-
-  const acceptedJobs = Math.max(totalJobs - getRejectedJobs(run), 0)
-  return (acceptedJobs / totalJobs) * 100
+  return Math.max(totalJobs - getRejectedJobs(run), 0)
 }
 
-export function getJobAcceptanceSummary(run) {
+export function getCompletedJobRate(run) {
   const totalJobs = run.parameters.numberOfJobs ?? 0
-  const acceptedJobs = Math.max(totalJobs - getRejectedJobs(run), 0)
+  return totalJobs === 0 ? 0 : (getCompletedJobs(run) / totalJobs) * 100
+}
 
-  return `${formatNumber(acceptedJobs, 0)}/${formatNumber(totalJobs, 0)}`
+export function getCompletedJobSummary(run) {
+  const totalJobs = run.parameters.numberOfJobs ?? 0
+  return `${formatNumber(getCompletedJobs(run), 0)}/${formatNumber(totalJobs, 0)}`
+}
+
+export function getAverageEnergyPerJobLoad(run) {
+  const points = run.trainingResults?.averageEnergyByJobLoad ?? []
+  const values = points.map((p) => p.averageEnergy)
+  return getAverage(values)
 }

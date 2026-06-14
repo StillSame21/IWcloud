@@ -94,6 +94,8 @@ async def run_evaluation(runner, session: RunSession) -> None:
     model = _load_model_for_inference(runner, session, get_dim_info(env))
 
   step = 0
+  prev_wall_time = 0.0
+  cumulative_energy = 0.0
   cpu_samples: list[list[list[float]]] = []
   while env.agents:
     if session.stop_requested:
@@ -108,8 +110,13 @@ async def run_evaluation(runner, session: RunSession) -> None:
 
     obs, _reward, terminated, truncated, info = env.step(actions)
     step += 1
+    server_farm_info = info.get('server_farm', {})
+    wall_time = float(server_farm_info.get('wall_time', 0))
+    instant_price = float(server_farm_info.get('price', 0))
+    cumulative_energy += instant_price * (wall_time - prev_wall_time)
+    prev_wall_time = wall_time
     cpu_samples.append(capture_vm_occupancy_sample(env))
-    metric = build_step_metric(env, info, step)
+    metric = build_step_metric(env, info, step, cumulative_energy=cumulative_energy)
     session.live_metrics.append(metric)
     await session.publish('step_metric', {'metric': metric})
     if step % 20 == 0:
@@ -219,6 +226,12 @@ def _build_episode_metric(
   rewards_for_smoothing.append(total_reward)
   smoothing_window = rewards_for_smoothing[-10:]
 
+  prev_wt = 0.0
+  cum_energy = 0.0
+  for price, wt in zip(prices, wall_times):
+    cum_energy += price * (wt - prev_wt)
+    prev_wt = wt
+
   rejected_jobs = env.num_rejected_jobs
   accepted_jobs = env.num_completed_jobs
   acceptance_rate = (
@@ -256,6 +269,7 @@ def _build_episode_metric(
     'stepTime': round_value(wall_times[-1] if wall_times else 0, 3),
     'energyCost': round_value(mean(prices), 4) if prices else 0,
     'totalEnergyCost': round_value(sum(prices), 4) if prices else 0,
+    'cumulativeEnergy': round_value(cum_energy, 4),
     'rejectedJobs': rejected_jobs,
     'rejectedTasks': env.rejected_tasks_count,
     'acceptedJobs': accepted_jobs,
